@@ -1,12 +1,6 @@
 # Contributing to GreenThumb Discovery MVP
 
-Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
-
-## Code of Conduct
-
-- Be respectful and inclusive
-- Welcome newcomers and help them learn
-- Focus on constructive feedback
+Welcome. This document provides guidelines for contributing to the project.
 
 ## Getting Started
 

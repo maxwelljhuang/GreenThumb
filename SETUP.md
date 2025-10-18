@@ -9,7 +9,6 @@ This project has been set up with a complete, production-ready directory structu
 ### 1. Copy Environment Variables
 
 ```bash
-cd discovery-mvp
 cp env.example .env
 ```
 
@@ -48,7 +47,6 @@ make run-dev
 ## 📁 Directory Structure Overview
 
 ```
-discovery-mvp/
 ├── backend/                 # Python backend (main application code)
 │   ├── api/                # REST API with FastAPI
 │   ├── ingestion/          # Data ingestion pipeline
