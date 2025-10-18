@@ -3,7 +3,7 @@
 ## Features
 ### Task 1
 - [ ] Step 1
-  - [ ] Environment Setup
+  - [x] Environment Setup
     - Directory
     - Packages 
   - [ ] Test Data Setup
