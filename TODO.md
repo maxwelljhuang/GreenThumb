@@ -16,7 +16,7 @@
     - stock/availability coherence (50)
     - spam/NSFW & near spam/NSFW (100)
 
-- [ ] Step 2: Schema Design
+- [x] Step 2: Schema Design
   - Postgres Tables
     - Products
     - Users
@@ -27,20 +27,20 @@
     - pgvector
     - pg_tgrm
 
-- [ ] Step 3: Data Validation and Quality Control
-  - [ ] Pydantic Structural Validation
+- [x] Step 3: Data Validation and Quality Control
+  - [x] Pydantic Structural Validation
     - quality checks
-  - [ ] Semantic Validation and Content Moderation
+  - [x] Semantic Validation and Content Moderation
     - nsfw checks
-  - [ ] Quality Scoring of Data
+  - [x] Quality Scoring of Data
 
-- [ ] Step 4: HDBSCAN De-duplication
+- [X] Step 4: CSV Ingestion Pipeline
+  - Uses Step 3 and Step 4
+
+- [ ] Step 5: HDBSCAN De-duplication
   - utilized fuzzy matching
   - keep highest quality duplicate
   - tank the score of low-quality duplicate, don't remove
-
-- [ ] Step 5: CSV Ingestion Pipeline
-  - Uses Step 3 and Step 4
 
 - [ ] Step 6: DBT Models
   - Post-ingestion cleaning and normalization
