@@ -19,6 +19,10 @@ DB_PASSWORD="postgres"
 DB_NAME="greenthumb_dev"
 DB_PORT="5432"
 
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 echo -e "${BLUE}================================${NC}"
 echo -e "${BLUE}GreenThumb Database Setup${NC}"
 echo -e "${BLUE}================================${NC}"
@@ -28,6 +32,12 @@ echo ""
 if ! docker info > /dev/null 2>&1; then
     echo -e "${RED}Error: Docker is not running. Please start Docker and try again.${NC}"
     exit 1
+fi
+
+# Check if alembic is installed
+if ! command -v alembic &> /dev/null; then
+    echo -e "${YELLOW}Alembic not found. Installing...${NC}"
+    pip install alembic sqlalchemy psycopg2-binary
 fi
 
 echo -e "${YELLOW}Step 1: Stopping any existing PostgreSQL containers...${NC}"
@@ -50,7 +60,9 @@ if [ ! -z "$CONTAINER_ON_PORT" ]; then
 fi
 
 echo ""
-echo -e "${YELLOW}Step 2: Starting PostgreSQL container...${NC}"
+echo -e "${YELLOW}Step 2: Starting PostgreSQL container with pgvector...${NC}"
+
+# Use pgvector image for vector support
 docker run -d \
     --name ${DB_CONTAINER_NAME} \
     -e POSTGRES_USER=${DB_USER} \
@@ -58,7 +70,7 @@ docker run -d \
     -e POSTGRES_DB=${DB_NAME} \
     -p ${DB_PORT}:5432 \
     -v greenthumb_postgres_data:/var/lib/postgresql/data \
-    postgres:15-alpine
+    pgvector/pgvector:pg15
 
 echo -e "${GREEN}  ✓ PostgreSQL container started${NC}"
 echo ""
@@ -68,7 +80,7 @@ echo -e "${YELLOW}Step 3: Waiting for PostgreSQL to be ready...${NC}"
 MAX_RETRIES=30
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    if docker exec ${DB_CONTAINER_NAME} pg_isready -U ${DB_USER} > /dev/null 2>&1; then
+    if docker exec ${DB_CONTAINER_NAME} pg_isready -U ${DB_USER} -d ${DB_NAME} > /dev/null 2>&1; then
         echo -e "${GREEN}  ✓ PostgreSQL is ready!${NC}"
         break
     fi
@@ -88,36 +100,55 @@ done
 echo ""
 
 # Additional wait to ensure PostgreSQL is fully initialized
-sleep 2
+sleep 3
 
 echo -e "${YELLOW}Step 4: Installing required PostgreSQL extensions...${NC}"
-# Install extensions
-docker exec ${DB_CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";" > /dev/null
-echo -e "${GREEN}  ✓ uuid-ossp extension installed${NC}"
 
-docker exec ${DB_CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS \"pg_trgm\";" > /dev/null
-echo -e "${GREEN}  ✓ pg_trgm extension installed${NC}"
-
-docker exec ${DB_CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS \"pgvector\";" > /dev/null 2>&1 || {
-    echo -e "${YELLOW}  ⚠ pgvector extension not available (this is optional for now)${NC}"
-}
+# Install extensions with better error handling
+extensions=("uuid-ossp" "pg_trgm" "vector")
+for ext in "${extensions[@]}"; do
+    if docker exec ${DB_CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} -c "CREATE EXTENSION IF NOT EXISTS \"${ext}\";" 2>/dev/null; then
+        echo -e "${GREEN}  ✓ ${ext} extension installed${NC}"
+    else
+        if [ "$ext" = "vector" ]; then
+            echo -e "${YELLOW}  ⚠ ${ext} extension not available (optional)${NC}"
+        else
+            echo -e "${RED}  ✗ Failed to install ${ext} extension${NC}"
+        fi
+    fi
+done
 echo ""
 
 echo -e "${YELLOW}Step 5: Running Alembic migrations...${NC}"
-# Go to project root and run migrations
-cd "$(dirname "$0")/.."
+
+# Set database URL
 export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:${DB_PORT}/${DB_NAME}"
 
-# Run migrations
-cd database/migrations
-alembic upgrade head
+# Navigate to migrations directory
+cd "${PROJECT_ROOT}/database/migrations" || {
+    echo -e "${RED}Error: Could not find migrations directory${NC}"
+    echo "Expected path: ${PROJECT_ROOT}/database/migrations"
+    exit 1
+}
 
-if [ $? -eq 0 ]; then
+# Check if alembic.ini exists
+if [ ! -f "alembic.ini" ]; then
+    echo -e "${RED}Error: alembic.ini not found in $(pwd)${NC}"
+    exit 1
+fi
+
+# Run migrations
+if alembic upgrade head; then
     echo -e "${GREEN}  ✓ Migrations completed successfully${NC}"
 else
     echo -e "${RED}  ✗ Migration failed${NC}"
+    echo "Attempting to show error details:"
+    docker exec ${DB_CONTAINER_NAME} psql -U ${DB_USER} -d ${DB_NAME} -c "\dt"
     exit 1
 fi
+
+# Return to project root
+cd "${PROJECT_ROOT}"
 
 echo ""
 echo -e "${GREEN}================================${NC}"

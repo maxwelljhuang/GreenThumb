@@ -66,7 +66,7 @@ def check_connection(conn_params: dict) -> Tuple[bool, str]:
 def check_extensions(conn) -> List[Tuple[str, bool, str]]:
     """Check if required extensions are installed."""
     required_extensions = ['uuid-ossp', 'pg_trgm']
-    optional_extensions = ['pgvector']
+    optional_extensions = ['vector']
 
     results = []
     cursor = conn.cursor()
@@ -106,7 +106,6 @@ def check_tables(conn) -> List[Tuple[str, bool, int]]:
         'product_embeddings',
         'ingestion_logs',
         'data_quality_issues',
-        'deduplication_log',
         'alembic_version'
     ]
 
@@ -144,7 +143,7 @@ def check_indexes(conn) -> List[Tuple[str, str, bool]]:
         ('products', 'idx_products_merchant'),
         ('products', 'idx_products_name_trgm'),
         ('products', 'idx_products_brand_trgm'),
-        ('users', 'idx_users_external_id'),
+        ('users', 'idx_users_email'),
         ('ingestion_logs', 'idx_ingestion_logs_status'),
     ]
 
