@@ -1,0 +1,275 @@
+version: 2
+
+models:
+  - name: product_catalog
+    description: "Final product catalog with clean, deduplicated products ready for serving"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: merchant_product_id
+        description: "Merchant's product ID"
+        tests:
+          - not_null
+      
+      - name: product_name
+        description: "Product title/name"
+        tests:
+          - not_null
+      
+      - name: search_price
+        description: "Current selling price"
+        tests:
+          - not_null
+      
+      - name: price_band
+        description: "Price category (budget/mid-range/premium/luxury)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['budget', 'mid-range', 'premium', 'luxury']
+      
+      - name: quality_score
+        description: "Data quality score (0-1)"
+        tests:
+          - not_null
+      
+      - name: quality_tier
+        description: "Quality tier (low/medium/high)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['low', 'medium', 'high']
+      
+      - name: freshness_status
+        description: "Data freshness (fresh/recent/aging/stale/very_stale)"
+        tests:
+          - not_null
+      
+      - name: primary_image_url
+        description: "Primary product image URL"
+      
+      - name: brand_rank
+        description: "Product rank within brand"
+      
+      - name: category_rank
+        description: "Product rank within category"
+      
+      - name: price_band_rank
+        description: "Product rank within price band"
+
+  - name: product_quality_metrics
+    description: "Quality metrics aggregated by merchant, brand, and category"
+    columns:
+      - name: dimension_type
+        description: "Type of dimension (merchant/brand/category)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['merchant', 'brand', 'category']
+      
+      - name: dimension_value
+        description: "Dimension value (merchant name, brand name, or category)"
+      
+      - name: total_products
+        description: "Total number of products"
+        tests:
+          - not_null
+      
+      - name: avg_quality_score
+        description: "Average quality score"
+        tests:
+          - not_null
+
+  - name: price_analytics
+    description: "Price analytics and insights"
+    columns:
+      - name: report_type
+        description: "Type of report"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['price_band_summary', 'top_categories_by_price', 'top_brands_by_premium_score']
+      
+      - name: dimension
+        description: "Dimension being analyzed"
+        tests:
+          - not_null
+      
+      - name: avg_price
+        description: "Average price"
+      
+      - name: avg_discount_pct
+        description: "Average discount percentage"
+
+  - name: ingestion_monitoring
+    description: "Ingestion pipeline performance monitoring"
+    columns:
+      - name: metric_type
+        description: "Type of metric"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['merchant_performance', 'daily_summary', 'recent_errors']
+      
+      - name: dimension
+        description: "Dimension being measured"
+      
+      - name: timestamp
+        description: "Timestamp or date of measurement"
+
+  - name: data_freshness_monitoring
+    description: "Monitor data freshness and identify stale products"
+    columns:
+      - name: report_type
+        description: "Type of freshness report"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['freshness_overview', 'merchant_staleness', 'category_staleness', 'removal_candidates']
+      
+      - name: dimension
+        description: "Dimension being analyzed"
+      
+      - name: details
+        description: "Detailed description of the metric"version: 2
+
+models:
+  - name: product_catalog
+    description: "Final product catalog with clean, deduplicated products ready for serving"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: merchant_product_id
+        description: "Merchant's product ID"
+        tests:
+          - not_null
+      
+      - name: product_name
+        description: "Product title/name"
+        tests:
+          - not_null
+      
+      - name: search_price
+        description: "Current selling price"
+        tests:
+          - not_null
+      
+      - name: price_band
+        description: "Price category (budget/mid-range/premium/luxury)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['budget', 'mid-range', 'premium', 'luxury']
+      
+      - name: quality_score
+        description: "Data quality score (0-1)"
+        tests:
+          - not_null
+      
+      - name: quality_tier
+        description: "Quality tier (low/medium/high)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['low', 'medium', 'high']
+      
+      - name: freshness_status
+        description: "Data freshness (fresh/recent/aging/stale/very_stale)"
+        tests:
+          - not_null
+      
+      - name: primary_image_url
+        description: "Primary product image URL"
+      
+      - name: brand_rank
+        description: "Product rank within brand"
+      
+      - name: category_rank
+        description: "Product rank within category"
+      
+      - name: price_band_rank
+        description: "Product rank within price band"
+
+  - name: product_quality_metrics
+    description: "Quality metrics aggregated by merchant, brand, and category"
+    columns:
+      - name: dimension_type
+        description: "Type of dimension (merchant/brand/category)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['merchant', 'brand', 'category']
+      
+      - name: dimension_value
+        description: "Dimension value (merchant name, brand name, or category)"
+      
+      - name: total_products
+        description: "Total number of products"
+        tests:
+          - not_null
+      
+      - name: avg_quality_score
+        description: "Average quality score"
+        tests:
+          - not_null
+
+  - name: price_analytics
+    description: "Price analytics and insights"
+    columns:
+      - name: report_type
+        description: "Type of report"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['price_band_summary', 'top_categories_by_price', 'top_brands_by_premium_score']
+      
+      - name: dimension
+        description: "Dimension being analyzed"
+        tests:
+          - not_null
+      
+      - name: avg_price
+        description: "Average price"
+      
+      - name: avg_discount_pct
+        description: "Average discount percentage"
+
+  - name: ingestion_monitoring
+    description: "Ingestion pipeline performance monitoring"
+    columns:
+      - name: metric_type
+        description: "Type of metric"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['merchant_performance', 'daily_summary', 'recent_errors']
+      
+      - name: dimension
+        description: "Dimension being measured"
+      
+      - name: timestamp
+        description: "Timestamp or date of measurement"
+
+  - name: data_freshness_monitoring
+    description: "Monitor data freshness and identify stale products"
+    columns:
+      - name: report_type
+        description: "Type of freshness report"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['freshness_overview', 'merchant_staleness', 'category_staleness', 'removal_candidates']
+      
+      - name: dimension
+        description: "Dimension being analyzed"
+      
+      - name: details
+        description: "Detailed description of the metric"

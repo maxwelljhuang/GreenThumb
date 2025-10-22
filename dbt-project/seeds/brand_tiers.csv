@@ -1,0 +1,19 @@
+brand_name,brand_tier,premium_factor
+Nike,major_brand,1.2
+Adidas,major_brand,1.2
+Puma,major_brand,1.1
+Reebok,major_brand,1.1
+Under Armour,major_brand,1.15
+New Balance,major_brand,1.1
+ASICS,major_brand,1.1
+Converse,major_brand,1.0
+Vans,major_brand,1.0
+The North Face,premium_outdoor,1.3
+Patagonia,premium_outdoor,1.35
+Columbia,outdoor,1.0
+Timberland,premium_casual,1.2
+Dr. Martens,premium_casual,1.25
+Champion,value_brand,0.9
+Fila,value_brand,0.9
+Kappa,value_brand,0.85
+Umbro,value_brand,0.85

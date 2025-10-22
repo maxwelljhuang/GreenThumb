@@ -1,0 +1,31 @@
+raw_category,clean_category,category_group
+Shoes,Footwear,Fashion
+Trainers,Footwear,Fashion
+Sneakers,Footwear,Fashion
+Boots,Footwear,Fashion
+Sandals,Footwear,Fashion
+T-Shirts,Tops,Fashion
+Shirts,Tops,Fashion
+Blouses,Tops,Fashion
+Hoodies,Outerwear,Fashion
+Jackets,Outerwear,Fashion
+Coats,Outerwear,Fashion
+Jeans,Bottoms,Fashion
+Trousers,Bottoms,Fashion
+Pants,Bottoms,Fashion
+Shorts,Bottoms,Fashion
+Skirts,Bottoms,Fashion
+Dresses,Dresses,Fashion
+Bags,Accessories,Fashion
+Watches,Accessories,Fashion
+Jewelry,Accessories,Fashion
+Sunglasses,Accessories,Fashion
+Hats,Accessories,Fashion
+Belts,Accessories,Fashion
+Electronics,Electronics,Tech
+Computers,Electronics,Tech
+Phones,Electronics,Tech
+Home & Garden,Home,Lifestyle
+Sports & Outdoors,Sports,Lifestyle
+Beauty,Beauty,Lifestyle
+Health,Health,Lifestyle

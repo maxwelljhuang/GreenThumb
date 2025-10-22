@@ -1,0 +1,161 @@
+version: 2
+
+models:
+  - name: stg_products
+    description: "Staging layer for products - basic cleaning and type casting"
+    columns:
+      - name: product_id
+        description: "Unique product identifier (UUID)"
+        tests:
+          - not_null
+          - unique
+      
+      - name: merchant_product_id
+        description: "Merchant's product identifier"
+        tests:
+          - not_null
+      
+      - name: merchant_id
+        description: "Merchant identifier"
+        tests:
+          - not_null
+      
+      - name: product_name
+        description: "Cleaned product name"
+        tests:
+          - not_null
+      
+      - name: quality_score
+        description: "Data quality score (0-1)"
+        tests:
+          - not_null
+      
+      - name: days_since_update
+        description: "Number of days since last update"
+        tests:
+          - not_null
+      
+      - name: has_invalid_name
+        description: "Flag for invalid product names"
+      
+      - name: has_invalid_price
+        description: "Flag for invalid prices"
+      
+      - name: missing_image
+        description: "Flag for missing product images"
+
+  - name: stg_ingestion_logs
+    description: "Staging layer for ingestion logs"
+    columns:
+      - name: ingestion_log_id
+        description: "Unique log identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: merchant_id
+        description: "Merchant identifier"
+      
+      - name: status
+        description: "Ingestion status"
+        tests:
+          - accepted_values:
+              values: ['pending', 'running', 'completed', 'failed', 'unknown']
+      
+      - name: completion_percentage
+        description: "Percentage of rows processed"
+      
+      - name: success_rate
+        description: "Percentage of successful rows"
+      
+      - name: is_successful
+        description: "Whether ingestion completed successfully"
+      
+      - name: duration_minutes
+        description: "Duration of ingestion in minutes"
+      
+      - name: data_quality_rate
+        description: "Percentage of rows passing quality checks"
+      
+      - name: duplicate_rate
+        description: "Percentage of duplicate products found"
+
+  - name: stg_data_quality_issues
+    description: "Staging layer for data quality issues tracking"
+    columns:
+      - name: issue_id
+        description: "Unique issue identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: issue_type
+        description: "Type of quality issue"
+      
+      - name: severity
+        description: "Issue severity level"
+        tests:
+          - accepted_values:
+              values: ['critical', 'warning', 'info']
+      
+      - name: issue_category
+        description: "Categorized issue type"
+      
+      - name: days_unresolved
+        description: "Days since issue was detected (if unresolved)"
+
+  - name: stg_deduplication_log
+    description: "Staging layer for deduplication tracking"
+    columns:
+      - name: dedup_log_id
+        description: "Unique log entry identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: dedup_method
+        description: "Method used for deduplication"
+        tests:
+          - accepted_values:
+              values: ['exact_hash', 'fuzzy_match', 'hdbscan_cluster', 'cross_merchant']
+      
+      - name: similarity_score
+        description: "Similarity score between products (0-1)"
+      
+      - name: confidence_level
+        description: "Confidence level of the match"
+        tests:
+          - accepted_values:
+              values: ['very_high', 'high', 'medium', 'low', 'very_low']
+
+  - name: int_products_enriched
+    description: "Intermediate model with enriched product data"
+    columns:
+      - name: product_id
+        description: "Unique product identifier"
+        tests:
+          - not_null
+          - unique
+      
+      - name: price_band
+        description: "Price category"
+        tests:
+          - accepted_values:
+              values: ['budget', 'mid-range', 'premium', 'luxury']
+      
+      - name: quality_tier
+        description: "Quality tier based on score"
+        tests:
+          - accepted_values:
+              values: ['low', 'medium', 'high']
+      
+      - name: freshness_status
+        description: "Data freshness status"
+        tests:
+          - accepted_values:
+              values: ['fresh', 'recent', 'aging', 'stale', 'very_stale']
+      
+      - name: completeness_score
+        description: "Data completeness score (0-100)"
+        tests:
+          - not_null
