@@ -20,6 +20,8 @@ from sqlalchemy.pool import NullPool
 from backend.models.product import ProductIngestion, ProductCanonical
 from backend.models.quality import ContentModerator, PriceValidator
 
+from backend.ingestion.deduplication import AdvancedDeduplicator
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -71,6 +73,11 @@ class CSVIngestionPipeline:
             'updated_products': 0,
             'errors': []
         }
+        self.deduplicator = AdvancedDeduplicator(
+                            fuzzy_threshold=0.85,
+                            cluster_min_similarity=0.70
+                            ) 
+        if enable_dedup else None
         
     def process_csv(
         self,
@@ -269,38 +276,22 @@ class CSVIngestionPipeline:
         self,
         session: Session,
         products: List[ProductIngestion]
-    ) -> List[ProductIngestion]:
-        """
-        Simple deduplication within batch and against database.
-        More sophisticated deduplication will be in Step 5.
-        """
-        unique_products = []
-        seen_hashes = set()
+        ) -> List[ProductIngestion]:
+        """Use advanced deduplication service."""
+        if not self.deduplicator:
+            return products
         
-        # Get existing hashes from database
-        if self.enable_dedup:
-            existing_hashes = self._get_existing_hashes(
-                session,
-                [p.dedup_hash for p in products]
-            )
-        else:
-            existing_hashes = set()
+        # Run advanced deduplication
+        unique_products, duplicate_clusters = self.deduplicator.deduplicate_batch(
+            products,
+            check_database=True,
+            session=session
+        )
         
-        for product in products:
-            # Check if duplicate in batch
-            if product.dedup_hash in seen_hashes:
-                self.stats['duplicates'] += 1
-                continue
-            
-            # Check if exists in database
-            if product.dedup_hash in existing_hashes:
-                self.stats['duplicates'] += 1
-                # Could update existing product here
-                continue
-            
-            seen_hashes.add(product.dedup_hash)
-            unique_products.append(product)
-        
+        # Merge duplicate clusters in database
+        if duplicate_clusters:
+            self.deduplicator.merge_duplicate_clusters(session, duplicate_clusters)
+    
         return unique_products
     
     def _get_existing_hashes(
