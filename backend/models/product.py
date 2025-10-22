@@ -157,8 +157,28 @@ class ProductIngestion(BaseModel):
     dedup_hash: Optional[str] = None
     
     # === VALIDATORS ===
-    
-    @field_validator('search_price', 'store_price', 'rrp_price', 'delivery_cost', 
+
+    @field_validator('aw_product_id', 'merchant_product_id', 'data_feed_id',
+                     'is_for_sale', 'web_offer', 'pre_order', 'commission_group', mode='before')
+    @classmethod
+    def convert_to_string(cls, v):
+        """Convert numeric values to strings."""
+        if v is None or v == '':
+            return None
+        return str(v)
+
+    @field_validator('brand_id', 'category_id', mode='before')
+    @classmethod
+    def convert_to_int(cls, v):
+        """Convert string IDs to integers."""
+        if v is None or v == '':
+            return None
+        try:
+            return int(v)
+        except (ValueError, TypeError):
+            return None
+
+    @field_validator('search_price', 'store_price', 'rrp_price', 'delivery_cost',
                      'saving', 'base_price', 'product_price_old', mode='before')
     @classmethod
     def clean_price(cls, v):

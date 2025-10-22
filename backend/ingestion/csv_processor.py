@@ -20,7 +20,7 @@ from sqlalchemy.pool import NullPool
 from backend.models.product import ProductIngestion, ProductCanonical
 from backend.models.quality import ContentModerator, PriceValidator
 
-from backend.ingestion.deduplication import AdvancedDeduplicator
+from backend.ingestion.deduplicators.deduplicator import AdvancedDeduplicator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -71,13 +71,15 @@ class CSVIngestionPipeline:
             'low_quality': 0,
             'new_products': 0,
             'updated_products': 0,
+            'failed_rows': 0,
             'errors': []
         }
-        self.deduplicator = AdvancedDeduplicator(
-                            fuzzy_threshold=0.85,
-                            cluster_min_similarity=0.70
-                            ) 
-        if enable_dedup else None
+        self.deduplicator = (
+            AdvancedDeduplicator(
+                fuzzy_threshold=0.85,
+                cluster_min_similarity=0.70
+            ) if enable_dedup else None
+        )
         
     def process_csv(
         self,
@@ -242,13 +244,10 @@ class CSVIngestionPipeline:
                 else:
                     unique_products = validated_products
                 
-                # Save to database
+                # Save to database (commits per product internally)
                 self._save_products(session, unique_products, ingestion_log_id)
-            
-            session.commit()
-            
+
         except Exception as e:
-            session.rollback()
             logger.error(f"Chunk processing failed: {str(e)}")
             raise
         finally:
@@ -320,33 +319,54 @@ class CSVIngestionPipeline:
         products: List[ProductIngestion],
         ingestion_log_id: str
     ):
-        """Save products to database."""
+        """Save products to database with per-product error handling."""
         for product in products:
-            # Convert to canonical model
-            canonical = ProductCanonical.from_ingestion(product)
-            
-            # Check if product exists (by merchant_id + merchant_product_id)
-            existing = session.execute(
-                text("""
-                    SELECT id FROM products 
-                    WHERE merchant_id = :merchant_id 
-                    AND merchant_product_id = :product_id
-                    LIMIT 1
-                """),
-                {
-                    'merchant_id': canonical.merchant_id,
-                    'product_id': canonical.merchant_product_id
-                }
-            ).first()
-            
-            if existing:
-                # Update existing product
-                self._update_product(session, existing[0], canonical)
-                self.stats['updated_products'] += 1
-            else:
-                # Insert new product
-                self._insert_product(session, canonical, ingestion_log_id)
-                self.stats['new_products'] += 1
+            try:
+                # Convert to canonical model
+                canonical = ProductCanonical.from_ingestion(product)
+
+                # Check if product exists (by merchant_id + merchant_product_id)
+                existing = session.execute(
+                    text("""
+                        SELECT id FROM products
+                        WHERE merchant_id = :merchant_id
+                        AND merchant_product_id = :product_id
+                        LIMIT 1
+                    """),
+                    {
+                        'merchant_id': canonical.merchant_id,
+                        'product_id': canonical.merchant_product_id
+                    }
+                ).first()
+
+                if existing:
+                    # Update existing product
+                    self._update_product(session, existing[0], canonical)
+                    self.stats['updated_products'] += 1
+                else:
+                    # Insert new product
+                    self._insert_product(session, canonical, ingestion_log_id)
+                    self.stats['new_products'] += 1
+
+                # Commit after each successful product
+                session.commit()
+
+            except Exception as e:
+                # Rollback this product and continue with next
+                session.rollback()
+                self.stats['failed_rows'] += 1
+
+                # Log error details
+                error_msg = f"Failed to save product {canonical.merchant_product_id}: {str(e)[:200]}"
+                logger.warning(error_msg)
+
+                if len(self.stats['errors']) < 10:
+                    self.stats['errors'].append({
+                        'product_id': canonical.merchant_product_id,
+                        'product_name': canonical.product_name,
+                        'error': str(e)[:200]
+                    })
+                continue
     
     def _insert_product(
         self,
@@ -397,7 +417,7 @@ class CSVIngestionPipeline:
                 'currency': product.currency,
                 'merchant_image_url': product.merchant_image_url,
                 'aw_image_url': product.aw_image_url,
-                'alternate_images': product.alternate_images,
+                'alternate_images': json.dumps(product.alternate_images) if product.alternate_images else '[]',
                 'fashion_category': product.fashion_category,
                 'fashion_size': product.fashion_size,
                 'colour': product.colour,
