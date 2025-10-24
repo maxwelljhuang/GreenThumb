@@ -42,6 +42,11 @@ pillow-heif>=0.13.0  # For HEIC/HEIF image support
 # pandas>=2.1.0
 
 # ============================================
+# Caching & Performance
+# ============================================
+redis>=5.0.0  # Redis client for caching embeddings
+
+# ============================================
 # Utilities
 # ============================================
 tqdm>=4.66.0  # Progress bars for batch processing
