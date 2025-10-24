@@ -34,25 +34,25 @@
     - nsfw checks
   - [x] Quality Scoring of Data
 
-- [X] Step 4: CSV Ingestion Pipeline
+- [x] Step 4: CSV Ingestion Pipeline
   - Uses Step 3 and Step 4
 
-- [ ] Step 5: HDBSCAN De-duplication
+- [x] Step 5: HDBSCAN De-duplication
   - utilized fuzzy matching
   - keep highest quality duplicate
   - tank the score of low-quality duplicate, don't remove
 
-- [ ] Step 6: DBT Models
+- [x] Step 6: DBT Models
   - Post-ingestion cleaning and normalization
   - Create Calculated Fields
   - Filter based on quality scores
 
-- [ ] Step 7: Database Connection Module + Testing
+- [x] Step 7: Database Connection Module + Testing
   - Database Connection Script
   - Testing on Test Data Set
 
-- [ ] Step 8: Documentation, Automation, and Logging
-  - [ ] Automated Setup Scripts
+- [x] Step 8: Documentation, Automation, and Logging
+  - [x] Automated Setup Scripts
   - Proper Logging and Documentation
 
 ## Bug Fixes
