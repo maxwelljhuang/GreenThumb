@@ -58,6 +58,7 @@ coverage.xml
 .env
 .env.local
 .env.*.local
+backend/ml/.env.ml
 
 # Database
 *.db
@@ -154,4 +155,39 @@ monitoring/
 *.bak
 *.swp
 .~lock.*
+
+# ============================================
+# ML-Specific Files (Task 2)
+# ============================================
+
+# Model cache and weights
+models/cache/
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.pt
+
+# FAISS indexes
+*.faiss
+*.index
+
+# Embedding files
+embeddings/
+*.npy
+*.h5
+*.hdf5
+
+# ML environment
+backend/ml/.env.ml
+
+# Hugging Face cache
+.cache/huggingface/
+.cache/torch/
+
+# Training artifacts
+checkpoints/
+runs/
+wandb/
+mlruns/
 
