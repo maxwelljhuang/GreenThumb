@@ -107,20 +107,24 @@ services:
   #   networks:
   #     - greenthumb-network
 
-  # Frontend (for future use)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: greenthumb-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     - API_URL=http://api:8000
-  #   depends_on:
-  #     - api
-  #   networks:
-  #     - greenthumb-network
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: greenthumb-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:${API_PORT:-8001}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+    networks:
+      - greenthumb-network
 
 volumes:
   postgres_data:

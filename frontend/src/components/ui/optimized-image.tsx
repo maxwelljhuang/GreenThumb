@@ -116,7 +116,7 @@ export function OptimizedImage({
 
   return (
     <div
-      ref={ref}
+      ref={ref as any}
       className={cn('relative overflow-hidden', className)}
       style={style}
       onClick={onClick}

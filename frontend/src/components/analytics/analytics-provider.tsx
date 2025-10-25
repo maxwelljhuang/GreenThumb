@@ -291,11 +291,14 @@ export function useABTest(testName: string, variants: Record<string, any>) {
 
   const trackConversion = (conversionName: string, value?: number) => {
     const analytics = useAnalyticsContext()
-    analytics.track('ab_test_conversion', {
-      test_name: testName,
-      variant,
-      conversion_name: conversionName,
-      value,
+    analytics.track({
+      name: 'ab_test_conversion',
+      properties: {
+        test_name: testName,
+        variant,
+        conversion_name: conversionName,
+        value,
+      }
     })
   }
 

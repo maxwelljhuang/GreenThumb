@@ -68,7 +68,11 @@ export function FeedMasonry({
 
   // Track visible products for analytics
   const handleView = useCallback((productId: string) => {
-    setVisibleProducts(prev => new Set([...prev, productId]))
+    setVisibleProducts(prev => {
+      const newSet = new Set(prev)
+      newSet.add(productId)
+      return newSet
+    })
     onView?.(productId)
   }, [onView])
 

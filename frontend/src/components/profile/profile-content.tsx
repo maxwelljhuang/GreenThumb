@@ -53,7 +53,7 @@ export function ProfileContent() {
       case 'overview':
         return <OverviewTab user={user} isEditing={isEditing} onEditToggle={setIsEditing} />
       case 'preferences':
-        return <PreferencesTab preferences={user.preferences} onUpdate={handlePreferencesUpdate} />
+        return <PreferencesTab preferences={user.preferences || {} as any} onUpdate={handlePreferencesUpdate} />
       case 'activity':
         return <ActivityTab userId={user.id} />
       case 'notifications':

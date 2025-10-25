@@ -134,7 +134,6 @@ export function SearchContent() {
                 query={query}
                 results={results}
                 loading={loading}
-                error={error}
                 onLike={handleLike}
                 onSave={handleSave}
                 onShare={handleShare}

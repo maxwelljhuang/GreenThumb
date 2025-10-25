@@ -87,7 +87,7 @@ export function FeedContent() {
         handleClick('load_more', 'feed', currentIndex)
       }
 
-      return response.results.map(result => result.product)
+      return response.results.map((result: any) => result.product)
     } catch (error) {
       console.error('Failed to load more products:', error)
       setError(error instanceof Error ? error.message : 'Failed to load more products')
@@ -167,7 +167,7 @@ export function FeedContent() {
         <p className="text-dune text-lg">
           Personalized recommendations just for you
         </p>
-        {userContext?.preferences?.hasLongTermProfile && (
+        {userContext?.preferences && (
           <p className="text-sm text-sage mt-2">
             ✨ Recommendations personalized based on your preferences
           </p>

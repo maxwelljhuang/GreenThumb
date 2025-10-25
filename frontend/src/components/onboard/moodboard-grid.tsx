@@ -41,7 +41,7 @@ export function MoodboardGrid({
               <MoodboardCard
                 moodboard={moodboard}
                 selected={selectedIds.includes(moodboard.id)}
-                onToggle={onToggle}
+                onToggle={() => onToggle(moodboard.id)}
                 disabled={disabled || (!selectedIds.includes(moodboard.id) && selectedIds.length >= 4)}
               />
             </motion.div>

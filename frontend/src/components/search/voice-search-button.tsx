@@ -186,11 +186,11 @@ export function VoiceSearchInput({
   className?: string
 }) {
   const {
+    buttonProps,
     isListening,
     isSupported,
     transcript,
     error,
-    toggleListening,
   } = useVoiceSearchButton(onSearch)
 
   return (

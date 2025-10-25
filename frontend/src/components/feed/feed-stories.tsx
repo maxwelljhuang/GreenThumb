@@ -29,7 +29,7 @@ const generateMockProducts = (count: number): Product[] => {
     currency: 'USD',
     brand: `Brand ${i % 5 + 1}`,
     category: ['Fashion', 'Home', 'Tech', 'Beauty'][i % 4],
-    tags: ['trending', 'popular', 'new'][i % 3] ? ['trending', 'popular', 'new'][i % 3] : [],
+    tags: [['trending', 'popular', 'new'][i % 3]].filter(Boolean) as string[],
     creator: {
       id: `user-${i % 10 + 1}`,
       name: `Creator ${i % 10 + 1}`,
