@@ -5,7 +5,7 @@ Thread-safe Redis client with connection pooling.
 
 import logging
 import pickle
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 import threading
 
 try:

@@ -325,6 +325,11 @@ class ModelRegistry:
 model_registry = ModelRegistry()
 
 
+def get_model_registry() -> ModelRegistry:
+    """Get the global model registry instance."""
+    return model_registry
+
+
 # Convenience functions for direct access
 def encode_image(image: Image.Image) -> np.ndarray:
     """Encode image using global model registry."""

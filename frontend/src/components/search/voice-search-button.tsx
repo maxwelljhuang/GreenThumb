@@ -72,7 +72,7 @@ export function VoiceSearchButton({
     return (
       <Button
         variant={variant}
-        size={size}
+        size={size === 'md' ? 'default' : size}
         disabled
         className={cn(className)}
         title="Voice search not supported in this browser"
@@ -91,7 +91,7 @@ export function VoiceSearchButton({
         <Button
           {...buttonProps}
           variant={variant}
-          size={size}
+          size={size === 'md' ? 'default' : size}
           className={cn(
             'relative overflow-hidden',
             isListening && 'bg-red-500 hover:bg-red-600 text-white',

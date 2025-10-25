@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { MasonryLayout } from './masonry-layout'
 import { PinCard } from '@/components/ui/pin-card'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'

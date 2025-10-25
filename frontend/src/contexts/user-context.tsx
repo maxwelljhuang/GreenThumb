@@ -1,7 +1,8 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { User, UserContext, UserPreferences } from '@/types'
+import { User, UserPreferences } from '@/types'
+import type { UserContext } from '@/types'
 import { useLocalStorage } from '@/hooks/use-local-storage'
 import { enhancedApiService } from '@/lib/enhanced-api-service'
 

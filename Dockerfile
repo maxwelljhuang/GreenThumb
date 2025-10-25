@@ -43,12 +43,17 @@ COPY logging.conf .
 # Create necessary directories
 RUN mkdir -p data/raw data/processed data/temp logs
 
-# Create non-root user
+# Create non-root user and copy python packages to their home
 RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app && \
+    cp -r /root/.local /home/appuser/.local && \
+    chown -R appuser:appuser /home/appuser/.local
 
 # Switch to non-root user
 USER appuser
+
+# Update PATH for appuser
+ENV PATH=/home/appuser/.local/bin:$PATH
 
 # Expose port
 EXPOSE 8000

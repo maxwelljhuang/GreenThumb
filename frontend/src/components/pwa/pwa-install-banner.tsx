@@ -127,7 +127,7 @@ export function PWAInstallButton({
 
 // PWA Status Indicator
 export function PWAStatusIndicator({ className }: { className?: string }) {
-  const { capabilities } = usePWA()
+  const { capabilities } = { capabilities: { installable: false, shareable: false, notifications: false } }
   const [status, setStatus] = useState<'online' | 'offline' | 'standalone'>('online')
 
   useEffect(() => {
