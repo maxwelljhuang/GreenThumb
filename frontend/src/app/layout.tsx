@@ -11,13 +11,13 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: {
-    default: 'GreenThumb - Discover Your Style',
-    template: '%s | GreenThumb',
+    default: 'knytt - Discover Your Style',
+    template: '%s | knytt',
   },
   description: 'Discover products that match your unique style with AI-powered recommendations',
   keywords: ['fashion', 'style', 'discovery', 'recommendations', 'sustainable'],
-  authors: [{ name: 'GreenThumb Team' }],
-  creator: 'GreenThumb',
+  authors: [{ name: 'knytt Team' }],
+  creator: 'knytt',
   publisher: 'GreenThumb',
   formatDetection: {
     email: false,

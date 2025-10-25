@@ -1,6 +1,6 @@
 """
 FastAPI Main Application
-Entry point for the GreenThumb ML API.
+Entry point for the knytt ML API.
 """
 
 import logging
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
     Runs on startup and shutdown to initialize/cleanup resources.
     """
     # Startup
-    logger.info("Starting GreenThumb ML API...")
+    logger.info("Starting knytt ML API...")
 
     settings = get_settings()
 
@@ -50,12 +50,12 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to load FAISS index: {e}")
         logger.warning("API will start but search functionality may be limited")
 
-    logger.info("GreenThumb ML API started successfully")
+    logger.info("knytt ML API started successfully")
 
     yield
 
     # Shutdown
-    logger.info("Shutting down GreenThumb ML API...")
+    logger.info("Shutting down knytt ML API...")
 
 
 def create_app() -> FastAPI:

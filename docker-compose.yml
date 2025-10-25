@@ -2,7 +2,7 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: greenthumb-postgres
+    container_name: knytt-postgres
     environment:
       POSTGRES_DB: ${DB_NAME:-greenthumb_dev}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -18,12 +18,12 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - greenthumb-network
+      - knytt-network
 
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: greenthumb-redis
+    container_name: knytt-redis
     command: redis-server --appendonly yes
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -35,14 +35,14 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - greenthumb-network
+      - knytt-network
 
   # Backend API
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: greenthumb-api
+    container_name: knytt-api
     command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "${API_PORT:-8000}:8000"
@@ -60,7 +60,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - greenthumb-network
+      - knytt-network
 
   # Celery Worker (for async tasks)
   # Commented out until backend.tasks.celery_app is implemented
@@ -68,7 +68,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: Dockerfile
-  #   container_name: greenthumb-celery-worker
+  #   container_name: knytt-celery-worker
   #   command: celery -A backend.tasks.celery_app worker --loglevel=info
   #   environment:
   #     - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-greenthumb_dev}
@@ -85,7 +85,7 @@ services:
   #     redis:
   #       condition: service_healthy
   #   networks:
-  #     - greenthumb-network
+  #     - knytt-network
 
   # Celery Beat (for scheduled tasks)
   # Commented out until backend.tasks.celery_app is implemented
@@ -93,7 +93,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: Dockerfile
-  #   container_name: greenthumb-celery-beat
+  #   container_name: knytt-celery-beat
   #   command: celery -A backend.tasks.celery_app beat --loglevel=info
   #   environment:
   #     - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/${DB_NAME:-greenthumb_dev}
@@ -105,14 +105,14 @@ services:
   #   depends_on:
   #     - redis
   #   networks:
-  #     - greenthumb-network
+  #     - knytt-network
 
   # Frontend
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: greenthumb-frontend
+    container_name: knytt-frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
@@ -124,13 +124,13 @@ services:
     depends_on:
       - api
     networks:
-      - greenthumb-network
+      - knytt-network
 
 volumes:
   postgres_data:
   redis_data:
 
 networks:
-  greenthumb-network:
+  knytt-network:
     driver: bridge
 

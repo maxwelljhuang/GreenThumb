@@ -49,7 +49,7 @@ export function PWAInstallBanner({ className }: PWAInstallBannerProps) {
             
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-forest text-sm mb-1">
-                Install GreenThumb
+                Install knytt
               </h3>
               <p className="text-xs text-dune mb-3">
                 Get quick access to sustainable product discovery with our app.

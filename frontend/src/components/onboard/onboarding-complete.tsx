@@ -56,7 +56,7 @@ export function OnboardingComplete({ selectedMoodboards, onRestart }: Onboarding
           transition={{ duration: 0.6, delay: 0.3 }}
         >
           <h1 className="text-4xl font-bold text-forest mb-4">
-            Welcome to GreenThumb!
+            Welcome to knytt!
           </h1>
           <p className="text-xl text-dune mb-8">
             Your personalized style profile is ready. Let's start discovering products you'll love.

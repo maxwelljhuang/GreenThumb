@@ -40,7 +40,7 @@ export function Header({ onSearch, user }: HeaderProps) {
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-pine to-forest flex items-center justify-center">
                 <span className="text-sand font-bold text-sm">G</span>
               </div>
-              <span className="font-bold text-xl text-forest">GreenThumb</span>
+              <span className="font-bold text-xl text-forest">knytt</span>
             </Link>
           </div>
 

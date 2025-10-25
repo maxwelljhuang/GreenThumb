@@ -224,7 +224,7 @@ export function LandingPage() {
               Ready to Find Your Style?
             </h2>
             <p className="text-xl text-sand/90 mb-8">
-              Join thousands of users who've discovered their perfect style with GreenThumb
+              Join thousands of users who've discovered their perfect style with knytt
             </p>
             <Button
               onClick={handleGetStarted}

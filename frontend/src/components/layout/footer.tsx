@@ -38,7 +38,7 @@ export function Footer() {
               <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-pine to-sage flex items-center justify-center">
                 <span className="text-sand font-bold text-sm">G</span>
               </div>
-              <span className="font-bold text-xl">GreenThumb</span>
+              <span className="font-bold text-xl">knytt</span>
             </Link>
             <p className="text-sand/80 text-sm mb-4 max-w-md">
               Discover products that match your unique style with AI-powered recommendations.
@@ -97,7 +97,7 @@ export function Footer() {
         <div className="border-t border-sand/20 mt-8 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-sand/60 text-sm">
-              © 2024 GreenThumb. All rights reserved.
+              © 2024 knytt. All rights reserved.
             </p>
             <div className="flex items-center space-x-6 mt-4 md:mt-0">
               <Link

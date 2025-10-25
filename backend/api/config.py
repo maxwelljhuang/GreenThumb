@@ -17,7 +17,7 @@ class APISettings(BaseSettings):
     """
 
     # API Info
-    app_name: str = "GreenThumb ML API"
+    app_name: str = "knytt ML API"
     version: str = "0.1.0"
     description: str = "ML-powered product search and recommendations"
 

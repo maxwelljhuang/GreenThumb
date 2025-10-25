@@ -1,6 +1,6 @@
 {
-  "name": "GreenThumb - Sustainable Product Discovery",
-  "short_name": "GreenThumb",
+  "name": "knytt - Sustainable Product Discovery",
+  "short_name": "knytt",
   "description": "Discover sustainable products that match your style and values",
   "start_url": "/",
   "display": "standalone",
@@ -78,7 +78,7 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "GreenThumb Home Page"
+      "label": "knytt Home Page"
     },
     {
       "src": "/screenshots/mobile-feed.png",
