@@ -1,121 +1,226 @@
-# GreenThumb Landing Page
+# GreenThumb Frontend
 
-A beautiful, Pinterest-inspired coming soon page for GreenThumb with waitlist signup functionality.
+A Pinterest-style frontend built with Next.js 14, featuring TikTok-style onboarding, infinite scroll recommendations, and AI-powered search with explainable results.
 
-## Features
+## 🎨 Design System
 
-- **Modern Design**: Pinterest-style visual layout with floating product cards
-- **Responsive**: Works perfectly on desktop, tablet, and mobile devices
-- **Waitlist Signup**: Email capture with client-side validation
-- **Animated UI**: Smooth animations and floating effects
-- **Lightweight**: Pure HTML, CSS, and JavaScript - no frameworks required
+### Color Palette
+- **Sand** (#f5f5d5) - Background
+- **Dune** (#c7b793) - Borders, muted
+- **Sage** (#a3b68a) - Subtle fills
+- **Pine** (#5c724a) - Primary CTAs
+- **Forest** (#354a2f) - Hover, dark text
 
-## File Structure
+## 🚀 Getting Started
 
-```
-frontend/
-├── index.html      # Main HTML structure
-├── styles.css      # All styling and responsive design
-├── script.js       # Form handling and interactivity
-└── README.md       # This file
-```
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
 
-## How to View
+### Installation
 
-### Option 1: Open Directly in Browser
-Simply double-click `index.html` or open it with your browser.
-
-### Option 2: Use a Local Server (Recommended)
-
-**Using Python:**
 ```bash
-cd frontend
-python3 -m http.server 8000
-```
-Then visit: http://localhost:8000
+# Install dependencies
+npm install
 
-**Using Node.js (with npx):**
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router
+│   ├── layout.tsx         # Root layout
+│   ├── page.tsx          # Home page
+│   ├── feed/             # Feed page
+│   ├── onboard/          # Onboarding page
+│   └── search/           # Search page
+├── components/            # React components
+│   ├── ui/               # Base UI components
+│   ├── feed/             # Feed components
+│   ├── onboard/          # Onboarding components
+│   └── search/           # Search components
+├── hooks/                # Custom React hooks
+├── lib/                  # Utility functions
+├── types/                # TypeScript type definitions
+└── store/                # State management
+```
+
+## 🎯 Features
+
+### Core Pages
+- **/** - Home (redirects to feed)
+- **/onboard** - Style quiz with moodboard selection
+- **/feed** - Infinite scroll recommendations
+- **/search** - Text-based discovery with attribution
+
+### Key Components
+- **Masonry Layout** - Pinterest-style grid
+- **Pin Cards** - Product cards with hover effects
+- **Moodboard Selection** - TikTok-style onboarding
+- **Search with Attribution** - "Because you liked..." explanations
+- **Infinite Scroll** - Smooth loading experience
+
+### Design Features
+- Responsive masonry layout (1-6 columns)
+- Smooth animations and transitions
+- Hover effects and micro-interactions
+- Loading states and skeletons
+- Accessibility-first design
+
+## 🛠️ Development
+
+### Available Scripts
+
 ```bash
-cd frontend
-npx serve
+npm run dev          # Start development server
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint
+npm run type-check   # Run TypeScript checks
+npm run test         # Run tests
+npm run test:watch   # Run tests in watch mode
+npm run test:e2e     # Run E2E tests
 ```
 
-**Using VS Code:**
-Install the "Live Server" extension and right-click on `index.html` → "Open with Live Server"
+### Code Quality
+- **ESLint** - Code linting
+- **Prettier** - Code formatting
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Utility-first styling
 
-## Customization
+## 🎨 Customization
 
-### Change Colors
-Edit `styles.css` and modify the CSS variables in `:root`:
-```css
-:root {
-    --primary-green: #2D5F2E;      /* Main brand color */
-    --text-primary: #211f26;        /* Main text color */
-    --bg-white: #ffffff;            /* Background color */
+### Adding New Colors
+Update `tailwind.config.ts` and `globals.css`:
+
+```typescript
+// tailwind.config.ts
+colors: {
+  yourColor: {
+    DEFAULT: '#your-hex',
+    50: '#lightest',
+    900: '#darkest',
+  }
 }
 ```
 
-### Update Content
-Edit `index.html` to change:
-- Hero title and subtitle
-- Feature descriptions
-- Footer text
+### Adding New Components
+Create components in `src/components/ui/` following the existing patterns:
 
-### Backend Integration
+```typescript
+// src/components/ui/your-component.tsx
+import { cn } from '@/lib/utils'
 
-When your backend is ready, update `script.js` in the `saveToWaitlist()` function:
+export function YourComponent({ className, ...props }) {
+  return (
+    <div className={cn("base-styles", className)} {...props} />
+  )
+}
+```
+
+## 📱 Responsive Design
+
+### Breakpoints
+- **Mobile**: 320px - 640px (1 column)
+- **Tablet**: 640px - 1024px (2-3 columns)
+- **Desktop**: 1024px - 1280px (4 columns)
+- **Large**: 1280px+ (6 columns)
+
+### Mobile-First Approach
+- Touch-friendly interactions
+- Optimized loading for mobile
+- Progressive enhancement
+
+## 🔧 Configuration
+
+### Environment Variables
+Create `.env.local`:
+
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=GreenThumb
+```
+
+### API Integration
+The frontend is configured to proxy API requests to the backend:
 
 ```javascript
-async function saveToWaitlist(email) {
-    const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            email: email,
-            source: 'landing_page'
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to save to waitlist');
-    }
-
-    return await response.json();
+// next.config.js
+async rewrites() {
+  return [
+    {
+      source: '/api/:path*',
+      destination: 'http://localhost:8000/api/:path*',
+    },
+  ]
 }
 ```
 
-## Current Behavior
+## 🚀 Deployment
 
-- Email addresses are currently saved to `localStorage`
-- Form prevents duplicate signups from the same browser
-- Success message displays after submission
-- No actual backend API calls are made yet
+### Vercel (Recommended)
+1. Connect your GitHub repository
+2. Configure environment variables
+3. Deploy automatically on push
 
-## Next Steps
+### Manual Deployment
+```bash
+npm run build
+npm start
+```
 
-1. **Add Backend API**: Create a `/api/waitlist` endpoint to store emails in your database
-2. **Email Integration**: Set up email notifications (SendGrid, Mailchimp, etc.)
-3. **Analytics**: Add Google Analytics or similar tracking
-4. **SEO**: Add meta tags for social sharing (Open Graph, Twitter Cards)
-5. **Accessibility**: Add ARIA labels and keyboard navigation improvements
+## 📊 Performance
 
-## Tech Stack
+### Optimization Features
+- Image optimization with Next.js Image
+- Code splitting and lazy loading
+- Bundle size optimization
+- Core Web Vitals optimization
 
-- Pure HTML5
-- CSS3 (Grid, Flexbox, Animations)
-- Vanilla JavaScript (ES6+)
-- Google Fonts (Inter)
+### Performance Targets
+- Lighthouse Score: 90+
+- First Contentful Paint: <1.5s
+- Largest Contentful Paint: <2.5s
+- Cumulative Layout Shift: <0.1
 
-## Browser Support
+## 🧪 Testing
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
+### Test Structure
+- **Unit Tests** - Component testing with Jest + RTL
+- **E2E Tests** - Full user flows with Playwright
+- **Visual Tests** - Component stories with Storybook
 
-## License
+### Running Tests
+```bash
+npm run test         # Unit tests
+npm run test:e2e     # E2E tests
+npm run storybook   # Visual testing
+```
 
-Part of the GreenThumb project.
+## 📚 Documentation
+
+- [Component Documentation](./docs/components.md)
+- [API Integration](./docs/api.md)
+- [Deployment Guide](./docs/deployment.md)
+- [Contributing Guide](./docs/contributing.md)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see [LICENSE](./LICENSE) for details.

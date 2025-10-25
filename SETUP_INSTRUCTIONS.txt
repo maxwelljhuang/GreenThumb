@@ -1,0 +1,46 @@
+GreenThumb Setup Instructions
+=============================
+
+Prerequisites:
+- Node.js 20.x (use nvm: nvm install 20 && nvm use 20)
+- Python 3.9+
+- PostgreSQL 14+
+- Redis 7+
+
+Frontend Setup:
+---------------
+cd frontend
+npm install
+npm run dev
+
+Backend Setup:
+--------------
+cd backend
+python -m venv venv
+source venv/bin/activate  # or venv\Scripts\activate on Windows
+pip install -r requirements.txt
+uvicorn api.main:app --reload
+
+Environment Variables:
+---------------------
+Frontend (.env.local):
+- NEXT_PUBLIC_API_URL=http://localhost:8000
+- NEXT_PUBLIC_USE_MOCK_DATA=false (set to true for mock mode)
+
+Backend (.env):
+- DATABASE_URL=postgresql://user:pass@localhost:5432/greenthumb
+- REDIS_URL=redis://localhost:6379
+- See backend/.env.example for full list
+
+Running in Mock Mode:
+--------------------
+Set NEXT_PUBLIC_USE_MOCK_DATA=true in frontend/.env.local
+This will use mock data instead of calling the backend API.
+
+Running with Live Backend:
+-------------------------
+1. Start PostgreSQL and Redis
+2. Run database migrations
+3. Start backend: cd backend && uvicorn api.main:app --reload
+4. Start frontend: cd frontend && npm run dev
+5. Visit http://localhost:3000
