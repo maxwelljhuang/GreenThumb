@@ -14,6 +14,9 @@ import hashlib
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Initialize logger first
+logger = logging.getLogger(__name__)
+
 try:
     import hdbscan
     HDBSCAN_AVAILABLE = True
@@ -27,8 +30,6 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.models.product import ProductIngestion, ProductCanonical
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -123,19 +124,26 @@ class AdvancedDeduplicator:
         
         self.stats['total_products'] = len(products)
         logger.info(f"Starting deduplication for {len(products)} products")
-        
+
         # Convert to DataFrame for easier processing
         df = self._products_to_dataframe(products)
-        
-        # Step 1: Exact hash matching
+
+        # Step 1: Check against database FIRST (before any clustering)
+        # This prevents canonicals from being removed after clusters are formed
+        db_duplicates = []
+        if check_database and session:
+            df, db_duplicates = self._check_database_duplicates(df, session)
+            logger.info(f"Found {len(df[df['is_duplicate']].index)} products already in database")
+
+        # Step 2: Exact hash matching on remaining products
         df, exact_clusters = self._exact_deduplication(df)
         logger.info(f"Found {len(exact_clusters)} exact duplicate clusters")
-        
-        # Step 2: Fuzzy string matching on remaining products
+
+        # Step 3: Fuzzy string matching on remaining products
         df, fuzzy_clusters = self._fuzzy_deduplication(df)
         logger.info(f"Found {len(fuzzy_clusters)} fuzzy duplicate clusters")
-        
-        # Step 3: HDBSCAN clustering on remaining products (if available)
+
+        # Step 4: HDBSCAN clustering on remaining products (if available)
         if len(df) > 10 and HDBSCAN_AVAILABLE and self.clusterer is not None:
             df, cluster_duplicates = self._hdbscan_deduplication(df)
             logger.info(f"Found {len(cluster_duplicates)} clusters via HDBSCAN")
@@ -143,14 +151,9 @@ class AdvancedDeduplicator:
             if len(df) > 10 and not HDBSCAN_AVAILABLE:
                 logger.info("Skipping HDBSCAN clustering (hdbscan not available)")
             cluster_duplicates = []
-        
-        # Step 4: Check against database if requested
-        if check_database and session:
-            df, db_duplicates = self._check_database_duplicates(df, session)
-            exact_clusters.extend(db_duplicates)
-        
+
         # Combine all duplicate clusters
-        all_clusters = exact_clusters + fuzzy_clusters + cluster_duplicates
+        all_clusters = exact_clusters + fuzzy_clusters + cluster_duplicates + db_duplicates
         
         # Convert remaining unique products back
         unique_products = self._dataframe_to_products(df, products)
@@ -220,9 +223,12 @@ class AdvancedDeduplicator:
     def _exact_deduplication(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[DuplicateCluster]]:
         """Find exact duplicates using hash."""
         clusters = []
-        
+
+        # Only consider products not already marked as duplicates
+        df_to_check = df[~df['is_duplicate']].copy() if 'is_duplicate' in df.columns else df.copy()
+
         # Group by hash
-        hash_groups = df.groupby('hash').filter(lambda x: len(x) > 1)
+        hash_groups = df_to_check.groupby('hash').filter(lambda x: len(x) > 1)
         
         if not hash_groups.empty:
             for hash_val, group in hash_groups.groupby('hash'):
@@ -253,12 +259,15 @@ class AdvancedDeduplicator:
     def _fuzzy_deduplication(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[DuplicateCluster]]:
         """Find near-duplicates using fuzzy string matching."""
         clusters = []
-        
-        # Reset duplicate flags
-        df['is_duplicate'] = False
-        
+
+        # Only work with products not already marked as duplicates
+        if 'is_duplicate' not in df.columns:
+            df['is_duplicate'] = False
+
+        df_to_check = df[~df['is_duplicate']].copy()
+
         # Group by brand for efficiency
-        brand_groups = df.groupby('brand')
+        brand_groups = df_to_check.groupby('brand')
         
         for brand, group in brand_groups:
             if len(group) < 2:
@@ -428,7 +437,7 @@ class AdvancedDeduplicator:
                 else:
                     # Existing is better, mark new as duplicate
                     df.loc[idx, 'is_duplicate'] = True
-                    df.loc[idx, 'cluster_id'] = f"db_{existing['id'][:8]}"
+                    df.loc[idx, 'cluster_id'] = f"db_{str(existing['id'])[:8]}"
         
         # Remove duplicates
         df_unique = df[~df['is_duplicate']].copy()
