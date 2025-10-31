@@ -27,6 +27,11 @@ from .blending import (
     blend_user_embeddings,
 )
 
+from .embedding_builder import (
+    UserEmbeddingBuilder,
+    get_embedding_builder,
+)
+
 __all__ = [
     # Cold start
     'ColdStartEmbedding',
@@ -47,4 +52,8 @@ __all__ = [
     'UserEmbeddingBlender',
     'get_user_blender',
     'blend_user_embeddings',
+
+    # Embedding builder
+    'UserEmbeddingBuilder',
+    'get_embedding_builder',
 ]

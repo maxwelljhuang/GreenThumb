@@ -170,11 +170,12 @@ async def recommend(
                 status_code=400
             )
 
-        # Get product embedding from cache or index
+        # Get product embedding from cache or database
         product_embedding = _get_product_embedding(
             request.product_id,
             search_service,
-            cache
+            cache,
+            db
         )
 
         if product_embedding is None:
@@ -384,42 +385,80 @@ def _cache_response(
 
 
 def _get_product_embedding(
-    product_id: int,
+    product_id: str,
     search_service: SearchService,
-    cache: EmbeddingCache
+    cache: EmbeddingCache,
+    db: Session = None
 ) -> Optional[Any]:
     """
-    Get product embedding from cache or index.
+    Get product embedding from cache or database.
 
     Args:
-        product_id: Product ID
+        product_id: Product ID (UUID string)
         search_service: Search service
         cache: Embedding cache
+        db: Database session (optional)
 
     Returns:
         Product embedding vector or None
     """
+    import numpy as np
+    from uuid import UUID
+
     # Try cache first
     cache_key = f"product_embedding:{product_id}"
     try:
         cached = cache.redis.get(cache_key)
         if cached is not None:
+            logger.debug(f"Retrieved product embedding from cache: {product_id}")
             return cached
     except Exception as e:
         logger.warning(f"Failed to get cached product embedding: {e}")
 
-    # Get from FAISS index
-    try:
-        index_manager = search_service.personalized_search.index_manager
+    # Get from database if db session provided
+    if db is not None:
+        try:
+            from sqlalchemy import select
+            from ...db.models import Product
 
-        # Get the vector from the index by product_id
-        # Note: This requires mapping product_id to index position
-        # For now, we'll return None and handle this in a future update
-        # TODO: Implement product_id -> index mapping
+            # Convert product_id to UUID
+            try:
+                product_uuid = UUID(product_id)
+            except ValueError:
+                logger.error(f"Invalid product UUID: {product_id}")
+                return None
 
-        logger.warning(f"Product embedding lookup not yet implemented for product {product_id}")
-        return None
+            # Query product
+            product = db.execute(
+                select(Product).where(Product.id == product_uuid)
+            ).scalar_one_or_none()
 
-    except Exception as e:
-        logger.error(f"Failed to get product embedding: {e}")
-        return None
+            if product is None:
+                logger.warning(f"Product not found: {product_id}")
+                return None
+
+            # Get text embedding (default for similarity)
+            if product.text_embedding is not None:
+                if isinstance(product.text_embedding, (list, tuple)):
+                    embedding = np.array(product.text_embedding, dtype=np.float32)
+                else:
+                    embedding = np.array(product.text_embedding, dtype=np.float32)
+
+                # Cache for future use
+                try:
+                    cache.redis.set(cache_key, embedding, ttl=3600)  # Cache for 1 hour
+                except Exception as e:
+                    logger.warning(f"Failed to cache product embedding: {e}")
+
+                logger.debug(f"Retrieved product embedding from database: {product_id}")
+                return embedding
+
+            logger.warning(f"Product has no text embedding: {product_id}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get product embedding from database: {e}")
+            return None
+
+    logger.warning(f"Cannot retrieve product embedding without database session: {product_id}")
+    return None
