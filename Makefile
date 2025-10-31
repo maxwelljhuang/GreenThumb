@@ -64,16 +64,16 @@ run-dev: ## Run the application in development mode with auto-reload
 	uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
 
 migrate: ## Run database migrations
-	cd database/migrations && alembic upgrade head
+	docker-compose exec api sh -c "cd database/migrations && alembic upgrade head"
 
 migrate-create: ## Create a new migration (usage: make migrate-create MSG="description")
-	cd database/migrations && alembic revision --autogenerate -m "$(MSG)"
+	docker-compose exec api sh -c "cd database/migrations && alembic revision --autogenerate -m '$(MSG)'"
 
 migrate-downgrade: ## Downgrade database by one revision
-	cd database/migrations && alembic downgrade -1
+	docker-compose exec api sh -c "cd database/migrations && alembic downgrade -1"
 
 migrate-history: ## Show migration history
-	cd database/migrations && alembic history
+	docker-compose exec api sh -c "cd database/migrations && alembic history"
 
 dbt-run: ## Run DBT models
 	cd dbt-project && dbt run

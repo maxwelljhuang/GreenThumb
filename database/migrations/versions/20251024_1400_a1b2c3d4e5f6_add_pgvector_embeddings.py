@@ -141,22 +141,20 @@ def upgrade() -> None:
 
     # === CREATE PGVECTOR INDEXES ===
     # These will be created via separate script after data loading
-    # Included here as SQL comments for reference
-
-    op.execute("""
-        -- Create IVFFlat index for fast similarity search (run after 100+ products loaded)
-        -- CREATE INDEX idx_products_embedding_ivfflat
-        -- ON products USING ivfflat (embedding vector_cosine_ops)
-        -- WITH (lists = 100);
-
-        -- For smaller datasets or exact search, use this instead:
-        -- CREATE INDEX idx_products_embedding_hnsw
-        -- ON products USING hnsw (embedding vector_cosine_ops);
-
-        -- User embeddings index (smaller dataset, HNSW is fine)
-        -- CREATE INDEX idx_user_embeddings_long_term_hnsw
-        -- ON user_embeddings USING hnsw (long_term_embedding vector_cosine_ops);
-    """)
+    # Included here for reference:
+    #
+    # Create IVFFlat index for fast similarity search (run after 100+ products loaded):
+    # CREATE INDEX idx_products_embedding_ivfflat
+    # ON products USING ivfflat (embedding vector_cosine_ops)
+    # WITH (lists = 100);
+    #
+    # For smaller datasets or exact search, use this instead:
+    # CREATE INDEX idx_products_embedding_hnsw
+    # ON products USING hnsw (embedding vector_cosine_ops);
+    #
+    # User embeddings index (smaller dataset, HNSW is fine):
+    # CREATE INDEX idx_user_embeddings_long_term_hnsw
+    # ON user_embeddings USING hnsw (long_term_embedding vector_cosine_ops);
 
 
 def downgrade() -> None:

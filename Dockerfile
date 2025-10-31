@@ -12,16 +12,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY requirements.txt .
-RUN pip install --user --no-cache-dir -r requirements.txt
+COPY requirements.txt requirements-ml.txt ./
+RUN pip install --user --no-cache-dir -r requirements.txt && \
+    pip install --user --no-cache-dir -r requirements-ml.txt
 
 # Production stage
 FROM python:3.11-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH=/root/.local/bin:$PATH
+    PYTHONDONTWRITEBYTECODE=1
 
 # Set working directory
 WORKDIR /app
@@ -31,8 +31,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
+# Create non-root user first
+RUN useradd -m -u 1000 appuser
+
+# Copy Python dependencies from builder to appuser's home
+COPY --from=builder /root/.local /home/appuser/.local
+RUN chown -R appuser:appuser /home/appuser/.local
 
 # Copy application code
 COPY backend/ ./backend/
@@ -41,14 +45,14 @@ COPY scripts/ ./scripts/
 COPY logging.conf .
 
 # Create necessary directories
-RUN mkdir -p data/raw data/processed data/temp logs
-
-# Create non-root user
-RUN useradd -m -u 1000 appuser && \
+RUN mkdir -p data/raw data/processed data/temp logs && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
+
+# Update PATH for appuser
+ENV PATH=/home/appuser/.local/bin:$PATH
 
 # Expose port
 EXPOSE 8000

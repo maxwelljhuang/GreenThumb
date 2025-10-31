@@ -6,7 +6,7 @@ Builds and configures FAISS indices from product embeddings stored in PostgreSQL
 import logging
 import numpy as np
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Any
 from datetime import datetime
 
 try:
@@ -14,6 +14,10 @@ try:
     FAISS_AVAILABLE = True
 except ImportError:
     FAISS_AVAILABLE = False
+
+# Import faiss for type hints only
+if TYPE_CHECKING:
+    import faiss
 
 from ..config import get_ml_config, MLConfig
 
@@ -56,7 +60,7 @@ class FAISSIndexBuilder:
 
         logger.info(f"Initialized FAISS index builder: type={self.index_type}, dim={self.dimension}")
 
-    def create_index(self, index_type: Optional[str] = None) -> faiss.Index:
+    def create_index(self, index_type: Optional[str] = None) -> "faiss.Index":
         """
         Create a new FAISS index based on configuration.
 
@@ -77,7 +81,7 @@ class FAISSIndexBuilder:
         else:
             raise FAISSIndexBuilderError(f"Unsupported index type: {index_type}")
 
-    def _create_flat_index(self) -> faiss.Index:
+    def _create_flat_index(self) -> "faiss.Index":
         """
         Create a Flat (brute force) index.
         Best for: Small datasets (<100k), exact search required
@@ -85,7 +89,7 @@ class FAISSIndexBuilder:
         logger.info(f"Creating IndexFlatL2 with dimension {self.dimension}")
         return faiss.IndexFlatL2(self.dimension)
 
-    def _create_ivf_index(self, nlist: Optional[int] = None) -> faiss.Index:
+    def _create_ivf_index(self, nlist: Optional[int] = None) -> "faiss.Index":
         """
         Create an IVF (Inverted File) index.
         Best for: Medium datasets (100k-1M), good speed/quality tradeoff
@@ -109,7 +113,7 @@ class FAISSIndexBuilder:
 
         return index
 
-    def _create_hnsw_index(self, M: int = 32) -> faiss.Index:
+    def _create_hnsw_index(self, M: int = 32) -> "faiss.Index":
         """
         Create an HNSW (Hierarchical Navigable Small World) index.
         Best for: Large datasets (>1M), very fast approximate search
@@ -234,7 +238,7 @@ class FAISSIndexBuilder:
 
         return save_path
 
-    def load_index(self, path: Optional[Path] = None) -> Tuple[faiss.Index, Dict[int, int], dict]:
+    def load_index(self, path: Optional[Path] = None) -> Tuple["faiss.Index", Dict[int, int], dict]:
         """
         Load FAISS index and ID mapping from disk.
 
@@ -283,7 +287,7 @@ class FAISSIndexBuilder:
 
         return index, id_mapping, metadata
 
-    def get_index_stats(self, index: faiss.Index) -> dict:
+    def get_index_stats(self, index: "faiss.Index") -> dict:
         """
         Get statistics about the FAISS index.
 

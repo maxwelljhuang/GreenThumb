@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: greenthumb-postgres
     environment:
       POSTGRES_DB: ${DB_NAME:-greenthumb_dev}
@@ -54,6 +52,7 @@ services:
       - APP_ENV=${APP_ENV:-development}
     volumes:
       - ./backend:/app/backend
+      - ./database:/app/database
       - ./data:/app/data
       - ./logs:/app/logs
     depends_on:
