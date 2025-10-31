@@ -55,7 +55,7 @@ class ProductResult(BaseModel):
     """
 
     # Product identifiers
-    product_id: int = Field(..., description="Product ID")
+    product_id: str = Field(..., description="Product ID (UUID)")
 
     # Product information
     title: str = Field(..., description="Product title")

@@ -22,6 +22,7 @@ numpy==1.26.2
 scikit-learn==1.3.2
 # hdbscan==0.8.40  # Optional: Advanced clustering for deduplication (no pre-built wheels for Linux ARM64/Docker on Apple Silicon, requires compilation)
 rapidfuzz==3.5.2
+chardet==5.2.0  # CSV encoding detection
 
 # Validation
 python-multipart==0.0.6

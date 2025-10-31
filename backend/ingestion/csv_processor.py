@@ -12,6 +12,8 @@ from datetime import datetime
 import asyncio
 from uuid import uuid4
 import traceback
+import chardet
+import json
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
@@ -25,6 +27,33 @@ from backend.ingestion.deduplicators.deduplicator import AdvancedDeduplicator
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def detect_csv_encoding(file_path: str) -> str:
+    """
+    Detect CSV file encoding using chardet.
+
+    Args:
+        file_path: Path to CSV file
+
+    Returns:
+        Detected encoding string
+    """
+    with open(file_path, 'rb') as f:
+        raw_data = f.read(10000)  # Read first 10KB
+        result = chardet.detect(raw_data)
+        encoding = result['encoding']
+        confidence = result['confidence']
+
+        # ASCII is often a false positive for UTF-8 files
+        # Since UTF-8 is a superset of ASCII, default to UTF-8
+        if encoding and encoding.lower() == 'ascii':
+            encoding = 'utf-8'
+            logger.info(f"Detected ASCII, using UTF-8 (ASCII superset)")
+        else:
+            logger.info(f"Detected encoding: {encoding} (confidence: {confidence:.2%})")
+
+        return encoding if encoding else 'utf-8'  # Default fallback
 
 
 class CSVIngestionPipeline:
@@ -107,13 +136,16 @@ class CSVIngestionPipeline:
         
         logger.info(f"Starting ingestion for {file_path}")
         logger.info(f"Merchant: {merchant_name} (ID: {merchant_id})")
-        
+
         try:
+            # Detect file encoding
+            encoding = detect_csv_encoding(file_path)
+
             # Count total rows first
-            total_rows = sum(1 for _ in open(file_path)) - 1  # Subtract header
+            total_rows = sum(1 for _ in open(file_path, encoding=encoding)) - 1  # Subtract header
             self.stats['total_rows'] = total_rows
             logger.info(f"Total rows to process: {total_rows}")
-            
+
             # Process in chunks
             chunk_iterator = pd.read_csv(
                 file_path,
@@ -121,7 +153,7 @@ class CSVIngestionPipeline:
                 skiprows=range(1, resume_from_row + 1) if resume_from_row > 0 else None,
                 na_values=['', 'N/A', 'None', 'null'],
                 low_memory=False,
-                encoding='utf-8',
+                encoding=encoding,
                 on_bad_lines='skip'
             )
             
@@ -237,15 +269,33 @@ class CSVIngestionPipeline:
             
             # Process validated products
             if validated_products:
+                duplicate_clusters = []
                 if self.enable_dedup:
-                    unique_products = self._deduplicate_batch(
+                    unique_products, duplicate_clusters = self._deduplicate_batch(
                         session, validated_products
                     )
+
+                    # Calculate total duplicates found in clusters
+                    cluster_duplicates = sum(
+                        len(cluster.products) - 1  # -1 for canonical
+                        for cluster in duplicate_clusters
+                    )
+
+                    # Database duplicates = validated - unique - cluster duplicates
+                    # These are products that already existed in the database
+                    database_duplicates = len(validated_products) - len(unique_products) - cluster_duplicates
+                    if database_duplicates > 0:
+                        self.stats['duplicates'] += database_duplicates
+                        logger.info(f"Found {database_duplicates} products already in database")
                 else:
                     unique_products = validated_products
-                
-                # Save to database (commits per product internally)
+
+                # Save to database first (commits per product internally)
                 self._save_products(session, unique_products, ingestion_log_id)
+
+                # After insert, link duplicates using database UUIDs
+                if duplicate_clusters:
+                    self._link_duplicate_products(session, duplicate_clusters)
 
         except Exception as e:
             logger.error(f"Chunk processing failed: {str(e)}")
@@ -275,24 +325,88 @@ class CSVIngestionPipeline:
         self,
         session: Session,
         products: List[ProductIngestion]
-        ) -> List[ProductIngestion]:
-        """Use advanced deduplication service."""
+        ) -> Tuple[List[ProductIngestion], List]:
+        """Use advanced deduplication service. Returns unique products and duplicate clusters."""
         if not self.deduplicator:
-            return products
-        
+            return products, []
+
         # Run advanced deduplication
         unique_products, duplicate_clusters = self.deduplicator.deduplicate_batch(
             products,
             check_database=True,
             session=session
         )
-        
-        # Merge duplicate clusters in database
-        if duplicate_clusters:
-            self.deduplicator.merge_duplicate_clusters(session, duplicate_clusters)
-    
-        return unique_products
-    
+
+        # Return both unique products and clusters (will link after insert)
+        return unique_products, duplicate_clusters
+
+    def _link_duplicate_products(
+        self,
+        session: Session,
+        duplicate_clusters: List
+    ):
+        """
+        Link duplicate products after they've been inserted into the database.
+        Uses database UUIDs instead of merchant_product_ids.
+        """
+        for cluster in duplicate_clusters:
+            try:
+                canonical = cluster.canonical_product
+
+                # Get the database UUID for the canonical product
+                canonical_uuid_result = session.execute(
+                    text("""
+                        SELECT id FROM products
+                        WHERE merchant_product_id = :product_id
+                        AND merchant_id = :merchant_id
+                        LIMIT 1
+                    """),
+                    {
+                        'product_id': canonical['product_id'],  # merchant_product_id
+                        'merchant_id': canonical['merchant_id']
+                    }
+                ).first()
+
+                if not canonical_uuid_result:
+                    logger.warning(f"Canonical product not found in database: {canonical['product_id']}")
+                    continue
+
+                canonical_uuid = canonical_uuid_result[0]
+
+                # Get duplicate merchant_product_ids
+                duplicate_merchant_ids = [
+                    p['product_id'] for p in cluster.products
+                    if p['product_id'] != canonical['product_id']
+                ]
+
+                if duplicate_merchant_ids:
+                    # Update duplicates to point to canonical using UUID
+                    session.execute(
+                        text("""
+                            UPDATE products
+                            SET is_duplicate = true,
+                                canonical_product_id = :canonical_uuid,
+                                is_active = false
+                            WHERE merchant_product_id = ANY(:duplicate_ids)
+                            AND merchant_id = :merchant_id
+                        """),
+                        {
+                            'canonical_uuid': canonical_uuid,
+                            'duplicate_ids': duplicate_merchant_ids,
+                            'merchant_id': canonical['merchant_id']
+                        }
+                    )
+                    session.commit()  # Commit per cluster
+
+                    # Increment duplicates counter
+                    self.stats['duplicates'] += len(duplicate_merchant_ids)
+                    logger.info(f"Linked {len(duplicate_merchant_ids)} duplicates to canonical {canonical['product_id']}")
+
+            except Exception as e:
+                session.rollback()  # Rollback this cluster's changes
+                logger.warning(f"Failed to link cluster for {canonical.get('product_id', 'unknown')}: {str(e)[:200]}")
+                continue  # Keep processing other clusters
+
     def _get_existing_hashes(
         self,
         session: Session,
@@ -485,24 +599,41 @@ class CSVIngestionPipeline:
         details: Any = None
     ):
         """Log a quality issue."""
-        session.execute(
-            text("""
-                INSERT INTO data_quality_issues (
-                    ingestion_log_id, issue_type, severity,
-                    field_name, details
-                ) VALUES (
-                    :log_id, :issue_type, :severity,
-                    :field_name, :details
-                )
-            """),
-            {
-                'log_id': ingestion_log_id,
-                'issue_type': issue_type,
-                'severity': 'warning',
-                'field_name': 'product',
-                'details': str(details)[:500] if details else None
-            }
-        )
+        try:
+            # Convert details to JSON format
+            if details is not None:
+                if isinstance(details, str):
+                    details_json = json.dumps({'message': details[:500]})
+                elif isinstance(details, dict):
+                    details_json = json.dumps(details)
+                else:
+                    details_json = json.dumps({'value': str(details)[:500]})
+            else:
+                details_json = None
+
+            session.execute(
+                text("""
+                    INSERT INTO data_quality_issues (
+                        ingestion_log_id, issue_type, severity,
+                        field_name, details
+                    ) VALUES (
+                        :log_id, :issue_type, :severity,
+                        :field_name, CAST(:details AS jsonb)
+                    )
+                """),
+                {
+                    'log_id': ingestion_log_id,
+                    'issue_type': issue_type,
+                    'severity': 'warning',
+                    'field_name': 'product',
+                    'details': details_json
+                }
+            )
+            session.commit()  # Commit the quality log
+        except Exception as e:
+            session.rollback()  # Rollback on failure
+            logger.warning(f"Failed to log quality issue for {issue_type}: {str(e)[:200]}")
+            # Don't raise - quality logging shouldn't break ingestion
     
     def _create_ingestion_log(
         self,

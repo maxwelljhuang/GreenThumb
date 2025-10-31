@@ -172,9 +172,8 @@ class MetadataService:
                     average_rating,
                     reviews
                 FROM products
-                WHERE id = ANY(:product_ids)
+                WHERE id::text = ANY(:product_ids)
                     AND is_active = true
-                ORDER BY ARRAY_POSITION(:product_ids, id)
             """)
 
             try:
@@ -182,7 +181,8 @@ class MetadataService:
                 rows = result.fetchall()
 
                 for row in rows:
-                    product_id = row.id
+                    # Convert UUID to string for consistent key format
+                    product_id = str(row.id)
 
                     product_data = {
                         "id": product_id,
