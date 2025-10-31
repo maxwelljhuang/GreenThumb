@@ -1,28 +1,23 @@
 #!/usr/bin/env python3
 """
 Generate Product Embeddings
-Creates image, text, and fused embeddings for all products.
+Creates text embeddings for all products using CLIP.
 
 Usage:
     python scripts/ml/generate_embeddings.py
-    python scripts/ml/generate_embeddings.py --batch-size 64
-    python scripts/ml/generate_embeddings.py --max-products 100 --dry-run
-    python scripts/ml/generate_embeddings.py --reprocess-all
+    python scripts/ml/generate_embeddings.py --batch-size 16
 """
 
 import sys
 import os
-import argparse
 from pathlib import Path
-from dotenv import load_dotenv
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-# Load environment
-load_dotenv()
-
-from backend.ml.embeddings.batch_processor import BatchEmbeddingProcessor
+from sqlalchemy import create_engine, text as sql_text
+from sqlalchemy.orm import sessionmaker
+from backend.ml.model_loader import model_registry
 from backend.ml.config import TORCH_AVAILABLE
 
 import logging
@@ -30,101 +25,162 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger(__name__)
+
+
+def create_text_representation(product: dict) -> str:
+    """Create text representation for CLIP encoding."""
+    parts = []
+
+    if product.get('product_name'):
+        parts.append(product['product_name'])
+
+    if product.get('brand_name'):
+        parts.append(f"by {product['brand_name']}")
+
+    if product.get('description'):
+        desc = product['description']
+        if len(desc) > 200:
+            desc = desc[:197] + "..."
+        parts.append(desc)
+
+    if product.get('colour'):
+        parts.append(f"color: {product['colour']}")
+
+    if product.get('fashion_size'):
+        parts.append(f"size: {product['fashion_size']}")
+
+    return " ".join(parts)
+
+
+def generate_embeddings(batch_size=16):
+    """Generate text embeddings for all products."""
+
+    # Database connection
+    db_url = os.getenv(
+        'DATABASE_URL',
+        'postgresql://postgres:postgres@localhost:5432/greenthumb_dev'
+    )
+    engine = create_engine(db_url)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    try:
+        # Get all products
+        logger.info("Fetching products from database...")
+        result = session.execute(sql_text("""
+            SELECT
+                id,
+                product_name,
+                brand_name,
+                description,
+                colour,
+                fashion_size
+            FROM products
+            WHERE is_duplicate = false
+            ORDER BY id
+        """))
+
+        products = [dict(row._mapping) for row in result]
+        total = len(products)
+
+        logger.info(f"Found {total} products to process")
+
+        if total == 0:
+            logger.warning("No products found")
+            return
+
+        # Load CLIP model
+        logger.info("Loading CLIP model...")
+        model_registry.get_clip_model()
+        logger.info(f"✅ Model loaded on {model_registry.get_device()}")
+
+        # Process in batches
+        successful = 0
+        failed = 0
+
+        for i in range(0, total, batch_size):
+            batch = products[i:i+batch_size]
+            batch_num = i // batch_size + 1
+            total_batches = (total + batch_size - 1) // batch_size
+
+            logger.info(f"Processing batch {batch_num}/{total_batches} ({len(batch)} products)")
+
+            try:
+                # Create text representations
+                texts = [create_text_representation(p) for p in batch]
+
+                # Generate embeddings
+                embeddings = model_registry.encode_text_batch(texts)
+
+                # Store in database
+                for product, embedding in zip(batch, embeddings):
+                    try:
+                        session.execute(sql_text("""
+                            INSERT INTO product_embeddings (
+                                product_id,
+                                embedding_type,
+                                embedding,
+                                model_version
+                            ) VALUES (
+                                :product_id,
+                                'text',
+                                :embedding,
+                                'ViT-B-32'
+                            )
+                            ON CONFLICT (product_id, embedding_type)
+                            DO UPDATE SET
+                                embedding = EXCLUDED.embedding,
+                                model_version = EXCLUDED.model_version,
+                                updated_at = now()
+                        """), {
+                            'product_id': product['id'],
+                            'embedding': embedding.tolist()
+                        })
+
+                        successful += 1
+
+                    except Exception as e:
+                        failed += 1
+                        logger.error(f"Failed for product {product['id']}: {e}")
+
+                # Commit batch
+                session.commit()
+                logger.info(f"  ✅ Batch {batch_num} complete ({successful}/{total} total)")
+
+            except Exception as e:
+                session.rollback()
+                logger.error(f"Batch {batch_num} failed: {e}", exc_info=True)
+                failed += len(batch)
+
+        # Summary
+        logger.info("=" * 60)
+        logger.info("Embedding Generation Complete")
+        logger.info("=" * 60)
+        logger.info(f"Total: {total}")
+        logger.info(f"Successful: {successful}")
+        logger.info(f"Failed: {failed}")
+        logger.info(f"Success rate: {successful/total*100:.1f}%")
+
+    finally:
+        session.close()
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='Generate embeddings for products'
-    )
-    parser.add_argument(
-        '--batch-size',
-        type=int,
-        default=32,
-        help='Number of products per batch (default: 32)'
-    )
-    parser.add_argument(
-        '--max-products',
-        type=int,
-        help='Maximum products to process (for testing)'
-    )
-    parser.add_argument(
-        '--reprocess-all',
-        action='store_true',
-        help='Reprocess all products, including those with embeddings'
-    )
-    parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Process but don\'t update database'
-    )
-    parser.add_argument(
-        '--db-url',
-        type=str,
-        help='Database URL (default: from DATABASE_URL env var)'
-    )
-
-    args = parser.parse_args()
-
-    # Check ML dependencies
+    """Main entry point."""
     if not TORCH_AVAILABLE:
-        print("❌ ML dependencies not installed")
-        print("\nInstall with:")
-        print("  pip install -r requirements-ml.txt")
-        print("\nFor help, see: ML_SETUP.md")
+        print("❌ PyTorch not available")
         return 1
 
-    # Get database URL
-    db_url = args.db_url or os.getenv('DATABASE_URL')
-    if not db_url:
-        print("❌ Database URL not provided")
-        print("\nProvide via --db-url or set DATABASE_URL environment variable")
-        return 1
+    logger.info("=" * 60)
+    logger.info("Product Embedding Generation")
+    logger.info("=" * 60)
 
-    print("=" * 60)
-    print("  Product Embedding Generation")
-    print("=" * 60)
-    print(f"Batch size: {args.batch_size}")
-    print(f"Only missing: {not args.reprocess_all}")
-    print(f"Dry run: {args.dry_run}")
-    if args.max_products:
-        print(f"Max products: {args.max_products}")
-    print()
-
-    if args.dry_run:
-        print("⚠️  DRY RUN MODE - Database will not be updated")
-        print()
-
-    # Create processor
     try:
-        processor = BatchEmbeddingProcessor(db_url)
-    except Exception as e:
-        print(f"❌ Failed to initialize processor: {e}")
-        return 1
-
-    # Process all products
-    try:
-        processor.process_all(
-            batch_size=args.batch_size,
-            only_missing=not args.reprocess_all,
-            dry_run=args.dry_run,
-            max_products=args.max_products
-        )
-
-        print("\n✅ Embedding generation complete!")
-        print("\nNext steps:")
-        print("1. Create vector indexes: python scripts/database/create_vector_indexes.py")
-        print("2. Test similarity search: python scripts/ml/test_search.py")
-
+        generate_embeddings(batch_size=16)
         return 0
-
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Interrupted by user")
-        processor.print_summary()
-        return 1
     except Exception as e:
-        print(f"\n❌ Processing failed: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Fatal error: {e}", exc_info=True)
         return 1
 
 

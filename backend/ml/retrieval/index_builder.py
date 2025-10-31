@@ -217,10 +217,11 @@ class FAISSIndexBuilder:
         logger.info(f"Saved FAISS index to {index_file}")
 
         # Save ID mapping as numpy array for efficiency
-        mapping_file = save_path / "id_mapping.npy"
+        mapping_file = save_path / "id_mapping.npz"
         # Convert dict to two arrays: positions and product_ids
         positions = np.array(list(id_mapping.keys()), dtype=np.int32)
-        product_ids = np.array(list(id_mapping.values()), dtype=np.int32)
+        # Product IDs are UUIDs (strings), save as object array
+        product_ids = np.array([str(pid) for pid in id_mapping.values()], dtype=object)
         np.savez(mapping_file, positions=positions, product_ids=product_ids)
         logger.info(f"Saved ID mapping to {mapping_file}")
 
@@ -266,15 +267,16 @@ class FAISSIndexBuilder:
         index = faiss.read_index(str(index_file))
 
         # Load ID mapping
-        mapping_file = load_path / "id_mapping.npy"
+        mapping_file = load_path / "id_mapping.npz"
         if not mapping_file.exists():
             raise FAISSIndexBuilderError(f"ID mapping file not found: {mapping_file}")
 
         logger.info(f"Loading ID mapping from {mapping_file}")
-        mapping_data = np.load(mapping_file)
+        mapping_data = np.load(mapping_file, allow_pickle=True)
         positions = mapping_data['positions']
         product_ids = mapping_data['product_ids']
-        id_mapping = {int(pos): int(pid) for pos, pid in zip(positions, product_ids)}
+        # Product IDs are UUIDs (strings), keep as strings
+        id_mapping = {int(pos): str(pid) for pos, pid in zip(positions, product_ids)}
 
         # Load metadata
         metadata_file = load_path / "metadata.npy"

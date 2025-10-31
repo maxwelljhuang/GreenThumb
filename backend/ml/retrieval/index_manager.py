@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import numpy as np
+from sqlalchemy import text
 
 try:
     import faiss
@@ -104,15 +105,14 @@ class FAISSIndexManager:
             FAISSIndexManagerError: If loading fails
         """
         try:
-            # Query products with embeddings
-            # Assuming Product model has: id, embedding (fused)
-            query = """
-                SELECT id, embedding
-                FROM products
-                WHERE embedding IS NOT NULL
-                  AND embedding_generated_at IS NOT NULL
-                ORDER BY id
-            """
+            # Query product embeddings
+            query = text("""
+                SELECT product_id, embedding
+                FROM product_embeddings
+                WHERE embedding_type = 'text'
+                  AND embedding IS NOT NULL
+                ORDER BY product_id
+            """)
 
             result = session.execute(query)
             rows = result.fetchall()
