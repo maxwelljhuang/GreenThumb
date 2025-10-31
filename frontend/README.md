@@ -1,121 +1,101 @@
-# GreenThumb Landing Page
+# Knytt Frontend
 
-A beautiful, Pinterest-inspired coming soon page for GreenThumb with waitlist signup functionality.
-
-## Features
-
-- **Modern Design**: Pinterest-style visual layout with floating product cards
-- **Responsive**: Works perfectly on desktop, tablet, and mobile devices
-- **Waitlist Signup**: Email capture with client-side validation
-- **Animated UI**: Smooth animations and floating effects
-- **Lightweight**: Pure HTML, CSS, and JavaScript - no frameworks required
-
-## File Structure
-
-```
-frontend/
-├── index.html      # Main HTML structure
-├── styles.css      # All styling and responsive design
-├── script.js       # Form handling and interactivity
-└── README.md       # This file
-```
-
-## How to View
-
-### Option 1: Open Directly in Browser
-Simply double-click `index.html` or open it with your browser.
-
-### Option 2: Use a Local Server (Recommended)
-
-**Using Python:**
-```bash
-cd frontend
-python3 -m http.server 8000
-```
-Then visit: http://localhost:8000
-
-**Using Node.js (with npx):**
-```bash
-cd frontend
-npx serve
-```
-
-**Using VS Code:**
-Install the "Live Server" extension and right-click on `index.html` → "Open with Live Server"
-
-## Customization
-
-### Change Colors
-Edit `styles.css` and modify the CSS variables in `:root`:
-```css
-:root {
-    --primary-green: #2D5F2E;      /* Main brand color */
-    --text-primary: #211f26;        /* Main text color */
-    --bg-white: #ffffff;            /* Background color */
-}
-```
-
-### Update Content
-Edit `index.html` to change:
-- Hero title and subtitle
-- Feature descriptions
-- Footer text
-
-### Backend Integration
-
-When your backend is ready, update `script.js` in the `saveToWaitlist()` function:
-
-```javascript
-async function saveToWaitlist(email) {
-    const response = await fetch('/api/waitlist', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            email: email,
-            source: 'landing_page'
-        })
-    });
-
-    if (!response.ok) {
-        throw new Error('Failed to save to waitlist');
-    }
-
-    return await response.json();
-}
-```
-
-## Current Behavior
-
-- Email addresses are currently saved to `localStorage`
-- Form prevents duplicate signups from the same browser
-- Success message displays after submission
-- No actual backend API calls are made yet
-
-## Next Steps
-
-1. **Add Backend API**: Create a `/api/waitlist` endpoint to store emails in your database
-2. **Email Integration**: Set up email notifications (SendGrid, Mailchimp, etc.)
-3. **Analytics**: Add Google Analytics or similar tracking
-4. **SEO**: Add meta tags for social sharing (Open Graph, Twitter Cards)
-5. **Accessibility**: Add ARIA labels and keyboard navigation improvements
+AI-powered product discovery platform frontend built with Next.js 14, TypeScript, and Tailwind CSS.
 
 ## Tech Stack
 
-- Pure HTML5
-- CSS3 (Grid, Flexbox, Animations)
-- Vanilla JavaScript (ES6+)
-- Google Fonts (Inter)
+- **Framework**: Next.js 14+ (App Router)
+- **Language**: TypeScript (strict mode)
+- **Styling**: Tailwind CSS v4
+- **State Management**: Zustand
+- **Data Fetching**: TanStack Query (React Query)
+- **Form Handling**: React Hook Form + Zod
+- **Code Quality**: ESLint + Prettier
 
-## Browser Support
+## Project Structure
 
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-- Mobile browsers (iOS Safari, Chrome Mobile)
+```
+src/
+├── app/              # Next.js App Router pages
+├── components/       # React components
+│   ├── layout/      # Header, Footer, Sidebar
+│   ├── product/     # ProductCard, ProductGrid
+│   ├── search/      # SearchBar, FilterPanel
+│   ├── onboarding/  # Onboarding flow components
+│   ├── common/      # Shared components
+│   └── ui/          # Base UI components (Shadcn/ui)
+├── lib/             # Utilities and API clients
+│   ├── api/         # API client layer
+│   ├── queries/     # React Query hooks
+│   └── utils/       # Utility functions
+├── hooks/           # Custom React hooks
+├── stores/          # Zustand stores
+├── types/           # TypeScript type definitions
+└── styles/          # Global styles
+```
 
-## License
+## Getting Started
 
-Part of the GreenThumb project.
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Set up environment variables:
+```bash
+cp .env.local.example .env.local
+```
+
+3. Run the development server:
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Available Scripts
+
+- `npm run dev` - Start development server on port 3000
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run format:check` - Check code formatting
+- `npm run type-check` - Run TypeScript type checking
+
+## Environment Variables
+
+- `NEXT_PUBLIC_API_BASE_URL` - Backend API URL (default: http://localhost:8001)
+- `NEXT_PUBLIC_APP_ENV` - Environment (development/staging/production)
+
+## Development Setup Complete ✅
+
+Phase 1.1 completed:
+- ✅ Next.js 14+ project initialized with TypeScript
+- ✅ Tailwind CSS v4 configured
+- ✅ Core dependencies installed (React Query, Zustand, Zod)
+- ✅ Dev dependencies installed (Prettier, ESLint)
+- ✅ Project structure created
+- ✅ Configuration files set up
+- ✅ Environment template created
+
+## Next Steps
+
+1. Create type definitions from backend API
+2. Build API client layer
+3. Set up React Query providers
+4. Implement core components
+5. Build authentication flow
+6. Create onboarding experience
+7. Implement search and discovery features
+
+## Backend API
+
+The frontend connects to the Knytt backend API:
+- **Base URL**: http://localhost:8001
+- **Docs**: http://localhost:8001/docs
+
+### Key Endpoints
+- `POST /api/v1/search` - Semantic product search
+- `POST /api/v1/recommend` - Personalized recommendations
+- `POST /api/v1/feedback` - User interaction tracking
