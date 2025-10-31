@@ -78,8 +78,8 @@ class PersonalizedSearch:
             index_manager=self.index_manager,
             db_session_factory=db_session_factory
         )
-        self.blender = UserEmbeddingBlender(self.config)
-        self.session_manager = SessionManager(self.config)
+        self.blender = UserEmbeddingBlender()
+        self.session_manager = SessionManager()
 
         logger.info("Personalized search initialized")
 
