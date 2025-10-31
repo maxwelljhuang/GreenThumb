@@ -54,7 +54,7 @@ export interface RecommendRequest {
   context?: RecommendationContext; // Default: "feed"
 
   // Context-specific parameters (required based on context)
-  product_id?: number; // Required if context="similar"
+  product_id?: string; // Required if context="similar"
   category_id?: number; // Required if context="category"
   search_query?: string; // Required if context="search"
 
@@ -107,7 +107,7 @@ export interface RecommendResponse {
  */
 export interface FeedbackRequest {
   user_id: number; // Required
-  product_id: number; // Required
+  product_id: string; // Required
   interaction_type: InteractionType; // Required
 
   // Optional metadata
@@ -131,7 +131,7 @@ export interface FeedbackResponse {
   message: string;
   interaction_id?: number;
   user_id: number;
-  product_id: number;
+  product_id: string;
   interaction_type: string;
   embeddings_updated: boolean;
   session_updated: boolean;
@@ -246,7 +246,7 @@ export interface ApiResponse<T> {
  */
 export interface OnboardingRequest {
   user_id: number;
-  selected_product_ids: number[]; // 3-5 products from moodboard
+  selected_product_ids: string[]; // 3-5 products from moodboard
 }
 
 /**

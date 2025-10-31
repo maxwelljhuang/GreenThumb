@@ -9,7 +9,7 @@
  */
 export interface ProductResult {
   // Core Product Information
-  product_id: number;
+  product_id: string;
   title: string;
   description?: string;
   price: number;
@@ -126,7 +126,7 @@ export interface FilterParams {
  * Use this for performance when full ProductResult is not needed.
  */
 export interface ProductCardData {
-  product_id: number;
+  product_id: string;
   title: string;
   price: number;
   rrp_price?: number;
@@ -142,7 +142,7 @@ export interface ProductCardData {
  * Product embedding metadata (for debugging/admin).
  */
 export interface ProductEmbedding {
-  product_id: number;
+  product_id: string;
   image_embedding?: number[]; // 512-dim vector
   text_embedding?: number[]; // 512-dim vector
   embedding?: number[]; // 512-dim fused embedding
