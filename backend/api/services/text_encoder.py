@@ -8,7 +8,7 @@ import numpy as np
 from typing import Optional
 import re
 
-from ...ml.model_loader import get_model_registry
+from ...ml.model_loader import model_registry
 from ...ml.config import get_ml_config, MLConfig
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class TextEncoderService:
             config: ML configuration
         """
         self.config = config or get_ml_config()
-        self.model_registry = get_model_registry(self.config)
+        self.model_registry = model_registry
 
         logger.info("Text encoder service initialized")
 

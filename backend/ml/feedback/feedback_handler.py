@@ -11,7 +11,7 @@ from datetime import datetime
 from enum import Enum
 
 from ..config import get_ml_config, MLConfig
-from ..user_modeling.warm_user import WarmUserEmbeddingUpdater
+from ..user_modeling.warm_user import WarmUserEmbedding
 from ..user_modeling.session import SessionManager
 from ..caching import EmbeddingCache
 
@@ -90,8 +90,8 @@ class FeedbackHandler:
         self.db_session_factory = db_session_factory
 
         # Initialize components
-        self.warm_updater = WarmUserEmbeddingUpdater(self.config)
-        self.session_manager = SessionManager(self.config)
+        self.warm_updater = WarmUserEmbedding()
+        self.session_manager = SessionManager()
         self.cache = EmbeddingCache(self.config)
 
         # Interaction weights for embedding updates
