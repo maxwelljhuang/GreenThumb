@@ -3,6 +3,8 @@ FAISS Index Manager
 Manages FAISS index lifecycle: loading from DB, building, rebuilding, and serving.
 """
 
+from __future__ import annotations
+
 import logging
 import threading
 from datetime import datetime, timedelta

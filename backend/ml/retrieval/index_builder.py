@@ -3,6 +3,8 @@ FAISS Index Builder
 Builds and configures FAISS indices from product embeddings stored in PostgreSQL.
 """
 
+from __future__ import annotations
+
 import logging
 import numpy as np
 from pathlib import Path

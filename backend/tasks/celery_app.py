@@ -4,6 +4,7 @@ Celery Application Configuration
 
 import os
 from celery import Celery
+from celery.schedules import crontab
 
 # Get configuration from environment
 CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
@@ -34,13 +35,38 @@ app.conf.update(
     worker_max_tasks_per_child=1000,
 )
 
-# Optional: Configure periodic tasks with Celery Beat
+# Configure periodic tasks with Celery Beat
 app.conf.beat_schedule = {
-    # Example: Run cleanup task daily
-    # 'cleanup-expired-data': {
-    #     'task': 'backend.tasks.maintenance.cleanup_expired_data',
-    #     'schedule': crontab(hour=2, minute=0),  # 2 AM daily
-    # },
+    # Rebuild FAISS index weekly (every Sunday at 3 AM)
+    'rebuild-faiss-index-weekly': {
+        'task': 'tasks.rebuild_faiss_index',
+        'schedule': crontab(hour=3, minute=0, day_of_week=0),
+        'kwargs': {'embedding_type': 'text'},
+    },
+
+    # Generate embeddings for new products daily (2 AM)
+    'generate-new-product-embeddings-daily': {
+        'task': 'tasks.generate_product_embeddings',
+        'schedule': crontab(hour=2, minute=0),
+        'kwargs': {
+            'force_regenerate': False,
+            'batch_size': 32,
+        },
+    },
+
+    # Refresh user embeddings for active users (every 6 hours)
+    'refresh-active-user-embeddings': {
+        'task': 'tasks.batch_refresh_user_embeddings',
+        'schedule': crontab(minute=0, hour='*/6'),
+        'kwargs': {'hours_active': 24},
+    },
+
+    # Clean up old sessions (daily at 4 AM)
+    'cleanup-old-sessions': {
+        'task': 'tasks.cleanup_old_sessions',
+        'schedule': crontab(hour=4, minute=0),
+        'kwargs': {'days_old': 7},
+    },
 }
 
 if __name__ == '__main__':

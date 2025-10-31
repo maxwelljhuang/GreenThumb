@@ -7,7 +7,7 @@ import logging
 import time
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..config import get_settings, APISettings
@@ -30,7 +30,6 @@ router = APIRouter(prefix="/api/v1", tags=["feedback"])
 @router.post("/feedback", response_model=FeedbackResponse, status_code=status.HTTP_200_OK)
 async def record_feedback(
     request: FeedbackRequest,
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     cache: EmbeddingCache = Depends(get_embedding_cache),
     settings: APISettings = Depends(get_settings),
@@ -87,20 +86,21 @@ async def record_feedback(
             db=db
         )
 
-    # Step 4: Trigger user embedding update (background task)
+    # Step 4: Trigger user embedding update (Celery task)
     embeddings_updated = False
+    task_id = None
     if request.update_embeddings:
-        # Add to background tasks for async processing
-        background_tasks.add_task(
-            _update_user_embeddings,
-            user_id=request.user_id,
-            product_id=request.product_id,
-            interaction_type=request.interaction_type,
-            rating=request.rating,
-            cache=cache,
-            db=db
+        # Dispatch Celery task for async processing
+        from ...tasks.embeddings import update_user_embedding
+
+        result = update_user_embedding.delay(
+            user_external_id=str(request.user_id),
+            max_interactions=50
         )
+        task_id = result.id
         embeddings_updated = True  # Marked as queued
+
+        logger.debug(f"Dispatched embedding update task {task_id} for user {request.user_id}")
 
     # Step 5: Invalidate cached recommendations
     cache_invalidated = False
@@ -135,7 +135,7 @@ async def record_feedback(
     return response
 
 
-def _store_interaction(request: FeedbackRequest, db: Session) -> Optional[int]:
+def _store_interaction(request: FeedbackRequest, db: Session) -> Optional[str]:
     """
     Store interaction in database.
 
@@ -144,37 +144,80 @@ def _store_interaction(request: FeedbackRequest, db: Session) -> Optional[int]:
         db: Database session
 
     Returns:
-        Interaction ID or None if storage failed
+        Interaction ID (UUID as string) or None if storage failed
     """
     try:
-        # TODO: Replace with actual SQLAlchemy model
-        # from ...db.models import UserInteraction
-        #
-        # interaction = UserInteraction(
-        #     user_id=request.user_id,
-        #     product_id=request.product_id,
-        #     interaction_type=request.interaction_type.value,
-        #     rating=request.rating,
-        #     session_id=request.session_id,
-        #     context=request.context,
-        #     query=request.query,
-        #     position=request.position,
-        #     metadata=request.metadata,
-        #     created_at=datetime.utcnow()
-        # )
-        # db.add(interaction)
-        # db.commit()
-        # db.refresh(interaction)
-        #
-        # logger.debug(f"Stored interaction: id={interaction.id}")
-        # return interaction.id
+        from ...db.models import UserInteraction, User, Product
+        from sqlalchemy import select
+        from uuid import UUID
 
-        # Mock implementation
-        logger.warning("Using mock interaction storage (TODO: implement real DB)")
-        return None
+        # Get or create user
+        # Assume user_id is either a UUID string or we look up by external_id
+        user_external_id = str(request.user_id)
+        user = db.execute(
+            select(User).where(User.external_id == user_external_id)
+        ).scalar_one_or_none()
 
+        if user is None:
+            # Create new user with external_id
+            user = User(external_id=user_external_id)
+            db.add(user)
+            db.flush()  # Get the user ID
+            logger.info(f"Created new user: external_id={user_external_id}, id={user.id}")
+
+        # Get product by UUID (assume product_id is a UUID string)
+        try:
+            product_uuid = UUID(str(request.product_id))
+            product = db.execute(
+                select(Product).where(Product.id == product_uuid)
+            ).scalar_one_or_none()
+
+            if product is None:
+                logger.warning(f"Product not found: {request.product_id}")
+                raise APIError(
+                    message="Product not found",
+                    details={"product_id": request.product_id},
+                    status_code=404
+                )
+        except ValueError:
+            # Not a valid UUID, try looking up by merchant_product_id
+            logger.warning(f"Invalid product UUID: {request.product_id}, treating as merchant_product_id")
+            raise APIError(
+                message="Invalid product ID format (expected UUID)",
+                details={"product_id": request.product_id},
+                status_code=400
+            )
+
+        # Create interaction record
+        interaction = UserInteraction(
+            user_id=user.id,
+            product_id=product.id,
+            interaction_type=request.interaction_type.value,
+            rating=request.rating,
+            session_id=request.session_id,
+            context=request.context,
+            query=request.query,
+            position=request.position,
+            interaction_metadata=request.metadata or {}
+        )
+
+        db.add(interaction)
+        db.commit()
+        db.refresh(interaction)
+
+        # Update user stats
+        user.total_interactions += 1
+        user.last_active = datetime.utcnow()
+        db.commit()
+
+        logger.info(f"Stored interaction: id={interaction.id}, user={user.id}, product={product.id}")
+        return str(interaction.id)
+
+    except APIError:
+        db.rollback()
+        raise
     except Exception as e:
-        logger.error(f"Failed to store interaction: {e}")
+        logger.error(f"Failed to store interaction: {e}", exc_info=True)
         db.rollback()
         raise APIError(
             message="Failed to record feedback",
@@ -236,11 +279,10 @@ def _update_session_embeddings(
 
         # Update cache
         decay_minutes = SESSION_DECAY.get(interaction_type, 10)
-        success = cache.cache_user_embeddings(
-            user_id=user_id,
-            long_term_embedding=user_embeddings.get("long_term"),  # Keep long-term unchanged
-            session_embedding=updated_session,
-            session_ttl=decay_minutes * 60  # Convert to seconds
+        success = cache.set_user_session_embedding(
+            user_id=str(user_id),
+            embedding=updated_session,
+            ttl=decay_minutes * 60  # Convert to seconds
         )
 
         if success:
@@ -253,64 +295,14 @@ def _update_session_embeddings(
         return False
 
 
-def _update_user_embeddings(
-    user_id: int,
-    product_id: int,
-    interaction_type: InteractionType,
-    rating: Optional[float],
-    cache: EmbeddingCache,
-    db: Session
-) -> bool:
-    """
-    Update user's long-term embeddings (background task).
-
-    This is a heavier operation that recalculates user preferences
-    based on interaction history.
-
-    Args:
-        user_id: User ID
-        product_id: Product ID
-        interaction_type: Type of interaction
-        rating: Rating value (if applicable)
-        cache: Embedding cache
-        db: Database session
-
-    Returns:
-        True if updated, False otherwise
-    """
-    try:
-        logger.info(f"Background task: Updating user embeddings for user {user_id}")
-
-        # TODO: Implement user embedding update logic
-        # This should:
-        # 1. Fetch recent user interactions from DB
-        # 2. Get product embeddings for interacted products
-        # 3. Apply weighted aggregation based on interaction types
-        # 4. Blend with existing long-term embedding
-        # 5. Update cache
-        #
-        # Example:
-        # from ...ml.user_modeling import UserEmbeddingBuilder
-        # builder = UserEmbeddingBuilder(cache=cache, db=db)
-        # new_embedding = builder.update_user_embedding(
-        #     user_id=user_id,
-        #     new_interaction=(product_id, interaction_type, rating)
-        # )
-        # cache.cache_user_embeddings(user_id, long_term_embedding=new_embedding)
-
-        logger.warning("User embedding update not yet implemented (TODO)")
-        return False
-
-    except Exception as e:
-        logger.error(f"Failed to update user embeddings: {e}")
-        return False
-
-
 def _invalidate_user_cache(user_id: int, cache: EmbeddingCache) -> bool:
     """
-    Invalidate cached recommendations for user.
+    Invalidate cached recommendations and search results for user.
 
-    Deletes all cached recommendation results for this user.
+    Deletes:
+    - All cached recommendation results for this user
+    - All cached search results for this user
+    - User embedding caches (will be refreshed on next request)
 
     Args:
         user_id: User ID
@@ -320,24 +312,64 @@ def _invalidate_user_cache(user_id: int, cache: EmbeddingCache) -> bool:
         True if invalidated, False otherwise
     """
     try:
-        # Delete all recommend cache keys for this user
-        # Cache keys follow pattern: recommend:{hash}
-        # We need to track user-specific keys or use a pattern scan
+        keys_deleted = 0
 
-        # TODO: Implement proper cache invalidation
-        # Options:
-        # 1. Track cache keys per user in a set
-        # 2. Use Redis SCAN with pattern matching
-        # 3. Add user_id to cache key prefix
-        #
-        # For now, we'll use a simple approach with key prefix
-        # cache.redis.delete_pattern(f"recommend:user:{user_id}:*")
+        # Pattern 1: Recommendations containing this user_id
+        # Cache keys follow pattern: recommend:{hash} where hash contains user:{user_id}
+        pattern = f"recommend:*user:{user_id}*"
 
-        logger.debug(f"Invalidated cache for user {user_id}")
+        try:
+            cursor = 0
+            while True:
+                cursor, keys = cache.redis.connection.scan(cursor, match=pattern, count=100)
+                if keys:
+                    cache.redis.connection.delete(*keys)
+                    keys_deleted += len(keys)
+                if cursor == 0:
+                    break
+        except Exception as e:
+            logger.warning(f"Failed to delete recommendation cache keys: {e}")
+
+        # Pattern 2: Search results containing this user_id
+        pattern = f"search:*user:{user_id}*"
+
+        try:
+            cursor = 0
+            while True:
+                cursor, keys = cache.redis.connection.scan(cursor, match=pattern, count=100)
+                if keys:
+                    cache.redis.connection.delete(*keys)
+                    keys_deleted += len(keys)
+                if cursor == 0:
+                    break
+        except Exception as e:
+            logger.warning(f"Failed to delete search cache keys: {e}")
+
+        # Pattern 3: User embedding caches
+        # These will be refreshed when the embedding update task completes
+        # But we can delete them now to force fresh lookup
+        user_id_str = str(user_id)
+        embedding_keys = [
+            f"user_embeddings:{user_id_str}",
+            f"user_long_term:{user_id_str}",
+            f"user_session:{user_id_str}"
+        ]
+
+        try:
+            for key in embedding_keys:
+                try:
+                    cache.redis.delete(key)
+                    keys_deleted += 1
+                except Exception as e:
+                    logger.warning(f"Failed to delete embedding key {key}: {e}")
+        except Exception as e:
+            logger.warning(f"Failed to delete user embedding keys: {e}")
+
+        logger.debug(f"Invalidated {keys_deleted} cache keys for user {user_id}")
         return True
 
     except Exception as e:
-        logger.error(f"Failed to invalidate cache: {e}")
+        logger.error(f"Failed to invalidate cache: {e}", exc_info=True)
         return False
 
 

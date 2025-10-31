@@ -32,8 +32,8 @@ class FeedbackRequest(BaseModel):
     """
 
     # User and product
-    user_id: int = Field(..., description="User ID")
-    product_id: int = Field(..., description="Product ID")
+    user_id: int = Field(..., description="User ID (external ID)")
+    product_id: str = Field(..., description="Product ID (UUID)")
 
     # Interaction details
     interaction_type: InteractionType = Field(..., description="Type of interaction")
@@ -86,7 +86,7 @@ class FeedbackRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "user_id": 123,
-                "product_id": 456,
+                "product_id": "550e8400-e29b-41d4-a716-446655440000",
                 "interaction_type": "click",
                 "session_id": "sess_abc123",
                 "context": "search",
@@ -112,9 +112,9 @@ class FeedbackResponse(BaseModel):
     message: str = Field(default="Feedback recorded", description="Status message")
 
     # Recorded interaction
-    interaction_id: Optional[int] = Field(None, description="Database ID of recorded interaction")
+    interaction_id: Optional[str] = Field(None, description="Database ID of recorded interaction (UUID)")
     user_id: int = Field(..., description="User ID")
-    product_id: int = Field(..., description="Product ID")
+    product_id: str = Field(..., description="Product ID (UUID)")
     interaction_type: str = Field(..., description="Type of interaction")
 
     # Update status
@@ -140,9 +140,9 @@ class FeedbackResponse(BaseModel):
             "example": {
                 "success": True,
                 "message": "Feedback recorded",
-                "interaction_id": 78901,
+                "interaction_id": "550e8400-e29b-41d4-a716-446655440000",
                 "user_id": 123,
-                "product_id": 456,
+                "product_id": "20970224-990e-4483-89af-d01978286247",
                 "interaction_type": "click",
                 "embeddings_updated": True,
                 "session_updated": True,
