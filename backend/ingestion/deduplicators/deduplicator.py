@@ -13,7 +13,15 @@ import hashlib
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import hdbscan
+try:
+    import hdbscan
+    HDBSCAN_AVAILABLE = True
+except ImportError:
+    HDBSCAN_AVAILABLE = False
+    logger.warning(
+        "hdbscan not available - HDBSCAN clustering will be disabled. "
+        "Only exact hash and fuzzy matching will be used for deduplication."
+    )
 from rapidfuzz import fuzz, process
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -70,15 +78,19 @@ class AdvancedDeduplicator:
             min_df=2,
             sublinear_tf=True
         )
-        
-        # HDBSCAN clusterer
-        self.clusterer = hdbscan.HDBSCAN(
-            min_cluster_size=2,
-            min_samples=1,
-            metric='euclidean',
-            cluster_selection_method='eom',  # Excess of Mass
-            prediction_data=True
-        )
+
+        # HDBSCAN clusterer (optional - only if hdbscan is available)
+        if HDBSCAN_AVAILABLE:
+            self.clusterer = hdbscan.HDBSCAN(
+                min_cluster_size=2,
+                min_samples=1,
+                metric='euclidean',
+                cluster_selection_method='eom',  # Excess of Mass
+                prediction_data=True
+            )
+        else:
+            self.clusterer = None
+            logger.info("HDBSCAN clustering disabled - hdbscan package not installed")
         
         # Statistics
         self.stats = {
@@ -311,17 +323,22 @@ class AdvancedDeduplicator:
     def _hdbscan_deduplication(self, df: pd.DataFrame) -> Tuple[pd.DataFrame, List[DuplicateCluster]]:
         """Find duplicates using HDBSCAN clustering on text embeddings."""
         clusters = []
-        
+
+        # Check if HDBSCAN is available
+        if not HDBSCAN_AVAILABLE or self.clusterer is None:
+            logger.info("HDBSCAN clustering skipped (not available)")
+            return df, []
+
         # Reset duplicate flags
         df['is_duplicate'] = False
-        
+
         # Create TF-IDF embeddings
         try:
             embeddings = self.vectorizer.fit_transform(df['text'].tolist())
         except Exception as e:
             logger.warning(f"Failed to create embeddings: {e}")
             return df, []
-        
+
         # Run HDBSCAN clustering
         cluster_labels = self.clusterer.fit_predict(embeddings.toarray())
         
