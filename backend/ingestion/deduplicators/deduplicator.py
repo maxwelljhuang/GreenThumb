@@ -13,7 +13,15 @@ import hashlib
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-import hdbscan
+
+try:
+    import hdbscan
+    HDBSCAN_AVAILABLE = True
+except ImportError:
+    HDBSCAN_AVAILABLE = False
+    hdbscan = None
+    logger.warning("hdbscan not available - clustering-based deduplication disabled")
+
 from rapidfuzz import fuzz, process
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -71,14 +79,17 @@ class AdvancedDeduplicator:
             sublinear_tf=True
         )
         
-        # HDBSCAN clusterer
-        self.clusterer = hdbscan.HDBSCAN(
-            min_cluster_size=2,
-            min_samples=1,
-            metric='euclidean',
-            cluster_selection_method='eom',  # Excess of Mass
-            prediction_data=True
-        )
+        # HDBSCAN clusterer (optional)
+        if HDBSCAN_AVAILABLE:
+            self.clusterer = hdbscan.HDBSCAN(
+                min_cluster_size=2,
+                min_samples=1,
+                metric='euclidean',
+                cluster_selection_method='eom',  # Excess of Mass
+                prediction_data=True
+            )
+        else:
+            self.clusterer = None
         
         # Statistics
         self.stats = {
@@ -124,11 +135,13 @@ class AdvancedDeduplicator:
         df, fuzzy_clusters = self._fuzzy_deduplication(df)
         logger.info(f"Found {len(fuzzy_clusters)} fuzzy duplicate clusters")
         
-        # Step 3: HDBSCAN clustering on remaining products
-        if len(df) > 10:  # Only cluster if we have enough products
+        # Step 3: HDBSCAN clustering on remaining products (if available)
+        if len(df) > 10 and HDBSCAN_AVAILABLE and self.clusterer is not None:
             df, cluster_duplicates = self._hdbscan_deduplication(df)
             logger.info(f"Found {len(cluster_duplicates)} clusters via HDBSCAN")
         else:
+            if len(df) > 10 and not HDBSCAN_AVAILABLE:
+                logger.info("Skipping HDBSCAN clustering (hdbscan not available)")
             cluster_duplicates = []
         
         # Step 4: Check against database if requested
