@@ -13,15 +13,6 @@ import hashlib
 
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-try:
-    import hdbscan
-    HDBSCAN_AVAILABLE = True
-except ImportError:
-    HDBSCAN_AVAILABLE = False
-    logger.warning(
-        "hdbscan not available - HDBSCAN clustering will be disabled. "
-        "Only exact hash and fuzzy matching will be used for deduplication."
-    )
 from rapidfuzz import fuzz, process
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -29,6 +20,18 @@ from sqlalchemy.orm import Session
 from backend.models.product import ProductIngestion, ProductCanonical
 
 logger = logging.getLogger(__name__)
+
+# Try to import HDBSCAN (optional dependency for advanced clustering)
+try:
+    import hdbscan
+    HDBSCAN_AVAILABLE = True
+except ImportError:
+    HDBSCAN_AVAILABLE = False
+    hdbscan = None
+    logger.warning(
+        "hdbscan not available - clustering-based deduplication disabled. "
+        "Only exact hash and fuzzy matching will be used for deduplication."
+    )
 
 
 @dataclass
@@ -78,8 +81,13 @@ class AdvancedDeduplicator:
             min_df=2,
             sublinear_tf=True
         )
+<<<<<<< HEAD
 
         # HDBSCAN clusterer (optional - only if hdbscan is available)
+=======
+        
+        # HDBSCAN clusterer (optional)
+>>>>>>> 732f8dc3d81c4f70fd952305cbbba9c25a153f38
         if HDBSCAN_AVAILABLE:
             self.clusterer = hdbscan.HDBSCAN(
                 min_cluster_size=2,
@@ -90,7 +98,10 @@ class AdvancedDeduplicator:
             )
         else:
             self.clusterer = None
+<<<<<<< HEAD
             logger.info("HDBSCAN clustering disabled - hdbscan package not installed")
+=======
+>>>>>>> 732f8dc3d81c4f70fd952305cbbba9c25a153f38
         
         # Statistics
         self.stats = {
@@ -136,11 +147,13 @@ class AdvancedDeduplicator:
         df, fuzzy_clusters = self._fuzzy_deduplication(df)
         logger.info(f"Found {len(fuzzy_clusters)} fuzzy duplicate clusters")
         
-        # Step 3: HDBSCAN clustering on remaining products
-        if len(df) > 10:  # Only cluster if we have enough products
+        # Step 3: HDBSCAN clustering on remaining products (if available)
+        if len(df) > 10 and HDBSCAN_AVAILABLE and self.clusterer is not None:
             df, cluster_duplicates = self._hdbscan_deduplication(df)
             logger.info(f"Found {len(cluster_duplicates)} clusters via HDBSCAN")
         else:
+            if len(df) > 10 and not HDBSCAN_AVAILABLE:
+                logger.info("Skipping HDBSCAN clustering (hdbscan not available)")
             cluster_duplicates = []
         
         # Step 4: Check against database if requested
