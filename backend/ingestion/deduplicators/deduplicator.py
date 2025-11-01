@@ -79,13 +79,8 @@ class AdvancedDeduplicator:
             min_df=2,
             sublinear_tf=True
         )
-<<<<<<< HEAD
 
         # HDBSCAN clusterer (optional - only if hdbscan is available)
-=======
-        
-        # HDBSCAN clusterer (optional)
->>>>>>> 732f8dc3d81c4f70fd952305cbbba9c25a153f38
         if HDBSCAN_AVAILABLE:
             self.clusterer = hdbscan.HDBSCAN(
                 min_cluster_size=2,
@@ -96,11 +91,8 @@ class AdvancedDeduplicator:
             )
         else:
             self.clusterer = None
-<<<<<<< HEAD
             logger.info("HDBSCAN clustering disabled - hdbscan package not installed")
-=======
->>>>>>> 732f8dc3d81c4f70fd952305cbbba9c25a153f38
-        
+
         # Statistics
         self.stats = {
             'total_products': 0,

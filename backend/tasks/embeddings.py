@@ -414,7 +414,7 @@ def update_user_embedding(
         from ..db.session import SessionLocal
         from ..db.models import User
         from ..ml.user_modeling import get_embedding_builder
-        from ..ml.caching import get_embedding_cache
+        from ..ml.caching import EmbeddingCache
 
         # Create database session
         db = SessionLocal()
@@ -423,7 +423,7 @@ def update_user_embedding(
         try:
             # Initialize cache (optional, gracefully handles Redis unavailability)
             try:
-                cache = get_embedding_cache()
+                cache = EmbeddingCache()
             except Exception as e:
                 logger.warning(f"Cache unavailable, continuing without cache: {e}")
 
@@ -617,7 +617,7 @@ def cleanup_old_sessions(self, days_old: int = 7) -> Dict[str, Any]:
         # Import here to avoid circular dependencies
         from ..db.session import SessionLocal
         from ..db.models import UserEmbedding
-        from ..ml.caching import get_embedding_cache
+        from ..ml.caching import EmbeddingCache
 
         # Create database session
         db = SessionLocal()
@@ -626,7 +626,7 @@ def cleanup_old_sessions(self, days_old: int = 7) -> Dict[str, Any]:
         try:
             # Initialize cache (optional)
             try:
-                cache = get_embedding_cache()
+                cache = EmbeddingCache()
             except Exception as e:
                 logger.warning(f"Cache unavailable, skipping cache cleanup: {e}")
 
